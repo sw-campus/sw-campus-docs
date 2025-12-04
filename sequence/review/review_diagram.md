@@ -6,8 +6,9 @@
 sequenceDiagram
     autonumber
     participant User as 사용자
-    participant Frontend as 프론트엔드<br/>(Next.js)
+    participant Frontend as 프론트엔드<br/>(넷스트)
     participant Backend as 백엔드<br/>(Spring)
+    participant S3 as S3
     participant OCR as OCR 서버
     participant DB as Database
 
@@ -20,18 +21,21 @@ sequenceDiagram
         Backend-->>Frontend: 미인증 응답
         Frontend->>User: 수료증 인증 모달 표시
         User->>Frontend: 수료증 이미지 업로드
-        Frontend->>Backend: POST /api/certificates/verify
+        Frontend->>Backend: POST /api/certificates/verify<br/>(이미지 포함)
+        Backend->>S3: 수료증 이미지 업로드
+        S3-->>Backend: 이미지 URL 반환
         Backend->>OCR: 이미지 OCR 분석 요청
         OCR-->>Backend: OCR 결과 반환 (강의명 등)
         
         Note over Backend: 강의명 매칭 검증
 
         alt 인증 성공
-            Backend->>DB: 수료증 인증값 저장<br/>(certified: true)
+            Backend->>DB: 수료증 인증 정보 저장<br/>(certified: true, imageUrl)
             DB-->>Backend: 저장 완료
             Backend-->>Frontend: 인증 성공 응답
             Frontend-->>User: 후기 작성 폼 표시
         else 인증 실패 (OCR 실패 / 강의명 불일치)
+            Backend->>S3: 업로드된 이미지 삭제
             Backend-->>Frontend: 400 Bad Request
             Frontend-->>User: 에러 메시지 표시<br/>("해당 강의의 수료증이 아닙니다")
         end
@@ -137,6 +141,7 @@ sequenceDiagram
     participant User as 사용자
     participant Frontend as 프론트엔드
     participant Backend as 백엔드
+    participant S3 as S3
     participant OCR as OCR 서버
     participant DB as Database
 
@@ -149,9 +154,11 @@ sequenceDiagram
         Frontend->>User: 인증 모달 표시
         User->>Frontend: 수료증 이미지 업로드
         Frontend->>Backend: 인증 요청
+        Backend->>S3: 이미지 업로드
+        S3-->>Backend: 이미지 URL 반환
         Backend->>OCR: OCR 분석
         OCR-->>Backend: 강의명 반환
-        Backend->>DB: 인증값 저장
+        Backend->>DB: 인증 정보 저장<br/>(certified, imageUrl)
         Backend-->>Frontend: 인증 성공
     end
 
