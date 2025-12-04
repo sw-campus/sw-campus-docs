@@ -91,6 +91,7 @@ sequenceDiagram
     participant User as 사용자 (공급자)
     participant Frontend as 프론트엔드<br/>(Next.js)
     participant Backend as 백엔드<br/>(Spring)
+    participant S3 as S3
     participant DB as Database
 
     User->>Frontend: 이메일 입력 후<br/>"인증 메일 발송" 버튼 클릭
@@ -112,12 +113,14 @@ sequenceDiagram
         Backend-->>Frontend: 인증 완료 응답
         
         Frontend-->>User: 나머지 정보 입력 폼 활성화
-        User->>Frontend: 회원가입 폼 제출<br/>(비밀번호, 사업자등록번호,<br/>사업주명, 사업자등록일)
-        Frontend->>Backend: POST /api/auth/signup/provider
-        Backend->>DB: 공급자 정보 저장<br/>(비밀번호 BCrypt 암호화)
+        User->>Frontend: 회원가입 폼 제출<br/>(비밀번호, 재직증명서 이미지)
+        Frontend->>Backend: POST /api/auth/signup/provider<br/>(이미지 포함)
+        Backend->>S3: 재직증명서 이미지 업로드
+        S3-->>Backend: 이미지 URL 반환
+        Backend->>DB: 공급자 정보 저장<br/>(비밀번호 BCrypt 암호화,<br/>이미지 URL, 승인상태: PENDING)
         DB-->>Backend: 저장 완료
-        Backend-->>Frontend: 201 Created
-        Frontend-->>User: 회원가입 성공<br/>로그인 페이지로 이동
+        Backend-->>Frontend: 201 Created<br/>(승인 대기 상태)
+        Frontend-->>User: 회원가입 성공<br/>"관리자 승인 후 이용 가능" 안내
 
     else 이메일 중복
         Backend-->>Frontend: 400 Bad Request<br/>(이메일 중복)
@@ -255,9 +258,9 @@ sequenceDiagram
         User->>Frontend: 이메일 입력
         Frontend->>Backend: 인증 메일 요청
         Note over User: 인증 링크 클릭
-        User->>Frontend: 회원가입 정보 제출<br/>(사업자 정보 포함)
+        User->>Frontend: 회원가입 정보 제출<br/>(재직증명서 포함)
         Frontend->>Backend: POST /api/auth/signup/provider
-        Backend->>DB: 공급자 저장
+        Backend->>DB: 공급자 저장<br/>(승인상태: PENDING)
     end
 
     rect rgb(200, 200, 230)
