@@ -1,21 +1,39 @@
-# Phase 02: Member 도메인
+# Phase 02: Auth Entity 도메인
 
-> 예상 시간: 2시간
+> 예상 시간: 3시간
 
 ## 1. 목표
 
-Member(회원) 도메인 객체와 Repository를 구현합니다.
+Auth 기능에 필요한 모든 Entity를 구현하여 다른 개발자와 협업할 수 있는 기반을 마련합니다.
 
 ---
 
 ## 2. 완료 조건 (Definition of Done)
 
-- [ ] Member 도메인 객체 구현
-- [ ] MemberRepository 인터페이스 정의 (domain)
-- [ ] MemberEntity 및 JPA Repository 구현 (infra)
-- [ ] Role enum 정의
-- [ ] 단위 테스트 통과
-- [ ] 테스트 커버리지 95% 이상
+### Member (완료 ✅)
+- [x] Member 도메인 객체 구현
+- [x] MemberRepository 인터페이스 정의 (domain)
+- [x] MemberEntity 및 JPA Repository 구현 (infra)
+- [x] Role enum 정의
+
+### Organization (완료 ✅)
+- [x] Organization 도메인 객체 구현
+- [x] OrganizationRepository 인터페이스 정의 (domain)
+- [x] OrganizationEntity 및 JPA Repository 구현 (infra)
+
+### EmailVerification (완료 ✅)
+- [x] EmailVerification 도메인 객체 구현
+- [x] EmailVerificationRepository 인터페이스 정의 (domain)
+- [x] EmailVerificationEntity 및 JPA Repository 구현 (infra)
+
+### RefreshToken (완료 ✅)
+- [x] RefreshToken 도메인 객체 구현
+- [x] RefreshTokenRepository 인터페이스 정의 (domain)
+- [x] RefreshTokenEntity 및 JPA Repository 구현 (infra)
+
+### 공통
+- [x] 단위 테스트 통과
+- [x] 빌드 검증
 
 ---
 
@@ -30,324 +48,499 @@ Member(회원) 도메인 객체와 Repository를 구현합니다.
 ```
 sw-campus-domain/
 └── src/main/java/com/swcampus/domain/
-    └── member/
-        ├── Member.java
-        ├── MemberRepository.java
-        └── Role.java
+    ├── member/
+    │   ├── Member.java ✅
+    │   ├── MemberRepository.java ✅
+    │   └── Role.java ✅
+    ├── organization/
+    │   ├── Organization.java (NEW)
+    │   └── OrganizationRepository.java (NEW)
+    └── auth/
+        ├── EmailVerification.java (NEW)
+        ├── EmailVerificationRepository.java (NEW)
+        ├── RefreshToken.java (NEW)
+        └── RefreshTokenRepository.java (NEW)
 
 sw-campus-infra/db-postgres/
 └── src/main/java/com/swcampus/infra/postgres/
-    └── member/
-        ├── MemberEntity.java
-        ├── MemberJpaRepository.java
-        └── MemberRepositoryImpl.java
+    ├── member/
+    │   ├── MemberEntity.java ✅
+    │   ├── MemberJpaRepository.java ✅
+    │   └── MemberRepositoryImpl.java ✅
+    ├── organization/
+    │   ├── OrganizationEntity.java (NEW)
+    │   ├── OrganizationJpaRepository.java (NEW)
+    │   └── OrganizationRepositoryImpl.java (NEW)
+    └── auth/
+        ├── EmailVerificationEntity.java (NEW)
+        ├── EmailVerificationJpaRepository.java (NEW)
+        ├── EmailVerificationRepositoryImpl.java (NEW)
+        ├── RefreshTokenEntity.java (NEW)
+        ├── RefreshTokenJpaRepository.java (NEW)
+        └── RefreshTokenRepositoryImpl.java (NEW)
 ```
 
 ---
 
-## 5. TDD Tasks
+## 5. 데이터베이스 스키마
 
-### 5.1 Red: 테스트 작성
+### 5.1 MEMBERS (구현 완료 ✅)
 
-**MemberTest.java**
-```java
-@DisplayName("Member 도메인 테스트")
-class MemberTest {
+```sql
+CREATE TYPE member_role AS ENUM ('USER', 'ORGANIZATION', 'ADMIN');
 
-    @Test
-    @DisplayName("일반 회원을 생성할 수 있다")
-    void createUser() {
-        // given
-        String email = "user@example.com";
-        String password = "encodedPassword";
-        String name = "홍길동";
-        String nickname = "길동이";
-        String phone = "010-1234-5678";
-        String location = "서울시 강남구";
-
-        // when
-        Member member = Member.createUser(email, password, name, nickname, phone, location);
-
-        // then
-        assertThat(member.getEmail()).isEqualTo(email);
-        assertThat(member.getRole()).isEqualTo(Role.USER);
-        assertThat(member.getOrgAuth()).isNull();
-    }
-
-    @Test
-    @DisplayName("교육제공자를 생성할 수 있다")
-    void createProvider() {
-        // given & when
-        Member member = Member.createProvider(
-            "provider@example.com", "encodedPassword", 
-            "김제공", "제공자", "010-9876-5432", "서울시 서초구"
-        );
-
-        // then
-        assertThat(member.getRole()).isEqualTo(Role.PROVIDER);
-        assertThat(member.getOrgAuth()).isEqualTo(0); // 미승인
-    }
-
-    @Test
-    @DisplayName("비밀번호를 변경할 수 있다")
-    void changePassword() {
-        // given
-        Member member = Member.createUser(...);
-        String newPassword = "newEncodedPassword";
-
-        // when
-        member.changePassword(newPassword);
-
-        // then
-        assertThat(member.getPassword()).isEqualTo(newPassword);
-    }
-}
+CREATE TABLE MEMBERS (
+    USER_ID BIGSERIAL PRIMARY KEY,
+    EMAIL VARCHAR(255) NOT NULL UNIQUE,
+    PASSWORD VARCHAR(255),
+    NAME VARCHAR(255) NOT NULL,
+    NICKNAME VARCHAR(255) NOT NULL,
+    PHONE VARCHAR(255) NOT NULL,
+    ROLE member_role NOT NULL DEFAULT 'USER',
+    ORG_AUTH SMALLINT DEFAULT NULL,      -- null: 일반회원, 0: 미승인, 1: 승인
+    ORG_ID BIGINT REFERENCES ORGANIZATIONS(ORG_ID),
+    LOCATION VARCHAR(255),
+    CERTIFICATE_URL VARCHAR(500),         -- 재직증명서 URL
+    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UPDATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
-**MemberRepositoryTest.java**
-```java
-@DataJpaTest
-@DisplayName("MemberRepository 테스트")
-class MemberRepositoryTest {
+### 5.2 ORGANIZATIONS (NEW)
 
-    @Autowired
-    private MemberJpaRepository memberJpaRepository;
-
-    private MemberRepositoryImpl memberRepository;
-
-    @BeforeEach
-    void setUp() {
-        memberRepository = new MemberRepositoryImpl(memberJpaRepository);
-    }
-
-    @Test
-    @DisplayName("이메일로 회원을 조회할 수 있다")
-    void findByEmail() {
-        // given
-        Member member = Member.createUser(...);
-        memberRepository.save(member);
-
-        // when
-        Optional<Member> found = memberRepository.findByEmail("user@example.com");
-
-        // then
-        assertThat(found).isPresent();
-        assertThat(found.get().getEmail()).isEqualTo("user@example.com");
-    }
-
-    @Test
-    @DisplayName("이메일 존재 여부를 확인할 수 있다")
-    void existsByEmail() {
-        // given
-        Member member = Member.createUser(...);
-        memberRepository.save(member);
-
-        // when & then
-        assertThat(memberRepository.existsByEmail("user@example.com")).isTrue();
-        assertThat(memberRepository.existsByEmail("unknown@example.com")).isFalse();
-    }
-}
+```sql
+CREATE TABLE ORGANIZATIONS (
+    ORG_ID BIGSERIAL PRIMARY KEY,
+    USER_ID BIGINT NOT NULL REFERENCES MEMBERS(USER_ID),  -- 기관 소유자
+    ORG_NAME TEXT,
+    DESCRIPTION TEXT,
+    GOV_AUTH VARCHAR(100),                -- 정부 인증
+    FACILITY_IMAGE_URL TEXT,
+    FACILITY_IMAGE_URL2 TEXT,
+    FACILITY_IMAGE_URL3 TEXT,
+    FACILITY_IMAGE_URL4 TEXT,
+    ORG_LOGO_URL TEXT,
+    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UPDATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
-### 5.2 Green: 구현
+### 5.3 EMAIL_VERIFICATIONS (NEW)
 
-**Role.java**
-```java
-public enum Role {
-    USER,
-    PROVIDER,
-    ADMIN
-}
+```sql
+CREATE TABLE EMAIL_VERIFICATIONS (
+    ID BIGSERIAL PRIMARY KEY,
+    EMAIL VARCHAR(255) NOT NULL,
+    CODE VARCHAR(6) NOT NULL,              -- 6자리 인증 코드
+    VERIFIED BOOLEAN DEFAULT FALSE,
+    EXPIRES_AT TIMESTAMP NOT NULL,
+    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_email_verifications_email ON EMAIL_VERIFICATIONS(EMAIL);
 ```
 
-**Member.java (Domain)**
+### 5.4 REFRESH_TOKENS (NEW)
+
+```sql
+CREATE TABLE REFRESH_TOKENS (
+    ID BIGSERIAL PRIMARY KEY,
+    USER_ID BIGINT NOT NULL UNIQUE REFERENCES MEMBERS(USER_ID) ON DELETE CASCADE,
+    TOKEN VARCHAR(500) NOT NULL UNIQUE,
+    EXPIRES_AT TIMESTAMP NOT NULL,
+    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_refresh_tokens_token ON REFRESH_TOKENS(TOKEN);
+```
+
+---
+
+## 6. Entity 구현 (Domain)
+
+### 6.1 Organization
+
+**Organization.java**
 ```java
 @Getter
-public class Member {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Organization {
     private Long id;
-    private String email;
-    private String password;
+    private Long userId;                  // 기관 소유자 ID
     private String name;
-    private String nickname;
-    private String phone;
-    private Role role;
-    private Integer orgAuth;  // null: 일반회원, 0: 미승인, 1: 승인
-    private Long orgId;
-    private String location;
+    private String description;
+    private String govAuth;               // 정부 인증
+    private String facilityImageUrl;
+    private String facilityImageUrl2;
+    private String facilityImageUrl3;
+    private String facilityImageUrl4;
+    private String logoUrl;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    // 정적 팩토리 메서드
-    public static Member createUser(String email, String password, 
-            String name, String nickname, String phone, String location) {
-        Member member = new Member();
-        member.email = email;
-        member.password = password;
-        member.name = name;
-        member.nickname = nickname;
-        member.phone = phone;
-        member.location = location;
-        member.role = Role.USER;
-        member.orgAuth = null;
-        member.createdAt = LocalDateTime.now();
-        member.updatedAt = LocalDateTime.now();
-        return member;
+    public static Organization create(Long userId, String name, String description) {
+        Organization org = new Organization();
+        org.userId = userId;
+        org.name = name;
+        org.description = description;
+        org.createdAt = LocalDateTime.now();
+        org.updatedAt = LocalDateTime.now();
+        return org;
     }
 
-    public static Member createProvider(String email, String password,
-            String name, String nickname, String phone, String location) {
-        Member member = createUser(email, password, name, nickname, phone, location);
-        member.role = Role.PROVIDER;
-        member.orgAuth = 0;  // 미승인
-        return member;
+    public static Organization of(Long id, Long userId, String name, String description,
+                                  String govAuth, String facilityImageUrl,
+                                  String facilityImageUrl2, String facilityImageUrl3,
+                                  String facilityImageUrl4, String logoUrl,
+                                  LocalDateTime createdAt, LocalDateTime updatedAt) {
+        Organization org = new Organization();
+        org.id = id;
+        org.userId = userId;
+        org.name = name;
+        org.description = description;
+        org.govAuth = govAuth;
+        org.facilityImageUrl = facilityImageUrl;
+        org.facilityImageUrl2 = facilityImageUrl2;
+        org.facilityImageUrl3 = facilityImageUrl3;
+        org.facilityImageUrl4 = facilityImageUrl4;
+        org.logoUrl = logoUrl;
+        org.createdAt = createdAt;
+        org.updatedAt = updatedAt;
+        return org;
     }
 
-    public void changePassword(String newPassword) {
-        this.password = newPassword;
+    public void updateInfo(String name, String description) {
+        this.name = name;
+        this.description = description;
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void approveProvider() {
-        if (this.role != Role.PROVIDER) {
-            throw new IllegalStateException("교육제공자만 승인할 수 있습니다");
-        }
-        this.orgAuth = 1;
+    public void updateFacilityImages(String url1, String url2, String url3, String url4) {
+        this.facilityImageUrl = url1;
+        this.facilityImageUrl2 = url2;
+        this.facilityImageUrl3 = url3;
+        this.facilityImageUrl4 = url4;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void updateLogoUrl(String logoUrl) {
+        this.logoUrl = logoUrl;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void setGovAuth(String govAuth) {
+        this.govAuth = govAuth;
         this.updatedAt = LocalDateTime.now();
     }
 }
 ```
 
-**MemberRepository.java (Domain Interface)**
+**OrganizationRepository.java**
 ```java
-public interface MemberRepository {
-    Member save(Member member);
-    Optional<Member> findById(Long id);
-    Optional<Member> findByEmail(String email);
-    boolean existsByEmail(String email);
+public interface OrganizationRepository {
+    Organization save(Organization organization);
+    Optional<Organization> findById(Long id);
+    Optional<Organization> findByUserId(Long userId);
+    boolean existsByUserId(Long userId);
 }
 ```
 
-**MemberEntity.java (Infra)**
+### 6.2 EmailVerification
+
+**EmailVerification.java**
 ```java
-@Entity
-@Table(name = "members")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class MemberEntity {
-    
+public class EmailVerification {
+    private Long id;
+    private String email;
+    private String code;
+    private boolean verified;
+    private LocalDateTime expiresAt;
+    private LocalDateTime createdAt;
+
+    private static final int EXPIRATION_MINUTES = 5;
+
+    public static EmailVerification create(String email, String code) {
+        EmailVerification ev = new EmailVerification();
+        ev.email = email;
+        ev.code = code;
+        ev.verified = false;
+        ev.expiresAt = LocalDateTime.now().plusMinutes(EXPIRATION_MINUTES);
+        ev.createdAt = LocalDateTime.now();
+        return ev;
+    }
+
+    public static EmailVerification of(Long id, String email, String code,
+                                       boolean verified, LocalDateTime expiresAt,
+                                       LocalDateTime createdAt) {
+        EmailVerification ev = new EmailVerification();
+        ev.id = id;
+        ev.email = email;
+        ev.code = code;
+        ev.verified = verified;
+        ev.expiresAt = expiresAt;
+        ev.createdAt = createdAt;
+        return ev;
+    }
+
+    public boolean isExpired() {
+        return LocalDateTime.now().isAfter(expiresAt);
+    }
+
+    public void verify() {
+        if (isExpired()) {
+            throw new IllegalStateException("인증 코드가 만료되었습니다");
+        }
+        this.verified = true;
+    }
+
+    public boolean matchCode(String inputCode) {
+        return this.code.equals(inputCode);
+    }
+}
+```
+
+**EmailVerificationRepository.java**
+```java
+public interface EmailVerificationRepository {
+    EmailVerification save(EmailVerification emailVerification);
+    Optional<EmailVerification> findByEmail(String email);
+    Optional<EmailVerification> findByEmailAndVerified(String email, boolean verified);
+    void deleteByEmail(String email);
+}
+```
+
+### 6.3 RefreshToken
+
+**RefreshToken.java**
+```java
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class RefreshToken {
+    private Long id;
+    private Long memberId;
+    private String token;
+    private LocalDateTime expiresAt;
+    private LocalDateTime createdAt;
+
+    public static RefreshToken create(Long memberId, String token, long expirationSeconds) {
+        RefreshToken rt = new RefreshToken();
+        rt.memberId = memberId;
+        rt.token = token;
+        rt.expiresAt = LocalDateTime.now().plusSeconds(expirationSeconds);
+        rt.createdAt = LocalDateTime.now();
+        return rt;
+    }
+
+    public static RefreshToken of(Long id, Long memberId, String token,
+                                  LocalDateTime expiresAt, LocalDateTime createdAt) {
+        RefreshToken rt = new RefreshToken();
+        rt.id = id;
+        rt.memberId = memberId;
+        rt.token = token;
+        rt.expiresAt = expiresAt;
+        rt.createdAt = createdAt;
+        return rt;
+    }
+
+    public boolean isExpired() {
+        return LocalDateTime.now().isAfter(expiresAt);
+    }
+
+    public void updateToken(String newToken, long expirationSeconds) {
+        this.token = newToken;
+        this.expiresAt = LocalDateTime.now().plusSeconds(expirationSeconds);
+    }
+}
+```
+
+**RefreshTokenRepository.java**
+```java
+public interface RefreshTokenRepository {
+    RefreshToken save(RefreshToken refreshToken);
+    Optional<RefreshToken> findByMemberId(Long memberId);
+    Optional<RefreshToken> findByToken(String token);
+    void deleteByMemberId(Long memberId);
+}
+```
+
+---
+
+## 7. Entity 구현 (Infra)
+
+### 7.1 OrganizationEntity
+
+```java
+@Entity
+@Table(name = "organizations")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class OrganizationEntity extends BaseEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_id")
+    @Column(name = "org_id")
     private Long id;
 
-    @Column(nullable = false, unique = true)
-    private String email;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
-    private String password;
-
-    @Column(nullable = false)
+    @Column(name = "org_name")
     private String name;
 
-    @Column(nullable = false)
-    private String nickname;
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "gov_auth", length = 100)
+    private String govAuth;
+
+    @Column(name = "facility_image_url", columnDefinition = "TEXT")
+    private String facilityImageUrl;
+
+    @Column(name = "facility_image_url2", columnDefinition = "TEXT")
+    private String facilityImageUrl2;
+
+    @Column(name = "facility_image_url3", columnDefinition = "TEXT")
+    private String facilityImageUrl3;
+
+    @Column(name = "facility_image_url4", columnDefinition = "TEXT")
+    private String facilityImageUrl4;
+
+    @Column(name = "org_logo_url", columnDefinition = "TEXT")
+    private String logoUrl;
+
+    public static OrganizationEntity from(Organization org) { ... }
+    public Organization toDomain() { ... }
+}
+```
+
+### 7.2 EmailVerificationEntity
+
+```java
+@Entity
+@Table(name = "email_verifications")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class EmailVerificationEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(nullable = false)
-    private String phone;
+    private String email;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Role role;
+    private String code;
 
-    @Column(name = "org_auth")
-    private Integer orgAuth;
+    @Column(nullable = false)
+    private boolean verified;
 
-    @Column(name = "org_id")
-    private Long orgId;
-
-    private String location;
+    @Column(name = "expires_at", nullable = false)
+    private LocalDateTime expiresAt;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    // Domain ↔ Entity 변환 메서드
-    public static MemberEntity from(Member member) { ... }
-    public Member toDomain() { ... }
+    public static EmailVerificationEntity from(EmailVerification ev) { ... }
+    public EmailVerification toDomain() { ... }
 }
 ```
 
-**MemberJpaRepository.java**
+### 7.3 RefreshTokenEntity
+
 ```java
-public interface MemberJpaRepository extends JpaRepository<MemberEntity, Long> {
-    Optional<MemberEntity> findByEmail(String email);
-    boolean existsByEmail(String email);
-}
-```
+@Entity
+@Table(name = "refresh_tokens")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class RefreshTokenEntity {
 
-**MemberRepositoryImpl.java**
-```java
-@Repository
-@RequiredArgsConstructor
-public class MemberRepositoryImpl implements MemberRepository {
-    
-    private final MemberJpaRepository jpaRepository;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Override
-    public Member save(Member member) {
-        MemberEntity entity = MemberEntity.from(member);
-        MemberEntity saved = jpaRepository.save(entity);
-        return saved.toDomain();
-    }
+    @Column(name = "user_id", nullable = false, unique = true)
+    private Long memberId;
 
-    @Override
-    public Optional<Member> findById(Long id) {
-        return jpaRepository.findById(id).map(MemberEntity::toDomain);
-    }
+    @Column(nullable = false, unique = true)
+    private String token;
 
-    @Override
-    public Optional<Member> findByEmail(String email) {
-        return jpaRepository.findByEmail(email).map(MemberEntity::toDomain);
-    }
+    @Column(name = "expires_at", nullable = false)
+    private LocalDateTime expiresAt;
 
-    @Override
-    public boolean existsByEmail(String email) {
-        return jpaRepository.existsByEmail(email);
-    }
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    public static RefreshTokenEntity from(RefreshToken rt) { ... }
+    public RefreshToken toDomain() { ... }
 }
 ```
 
 ---
 
-## 6. 검증
+## 8. 검증
 
 ```bash
-# 테스트 실행
-./gradlew :sw-campus-domain:test --tests "*MemberTest*"
-./gradlew :sw-campus-infra:db-postgres:test --tests "*MemberRepositoryTest*"
+# 빌드 확인
+./gradlew build -x test
 
-# 커버리지 확인
-./gradlew :sw-campus-domain:jacocoTestReport
+# 테스트 실행
+./gradlew test
+
+# 특정 테스트만 실행
+./gradlew test --tests "*OrganizationTest*"
+./gradlew test --tests "*EmailVerificationTest*"
+./gradlew test --tests "*RefreshTokenTest*"
 ```
 
 ---
 
-## 7. 산출물
+## 9. 산출물
 
-| 파일 | 위치 | 설명 |
+| 파일 | 위치 | 상태 |
 |------|------|------|
-| `Role.java` | domain | 역할 enum |
-| `Member.java` | domain | 회원 도메인 객체 |
-| `MemberRepository.java` | domain | Repository 인터페이스 |
-| `MemberEntity.java` | infra | JPA Entity |
-| `MemberJpaRepository.java` | infra | JPA Repository |
-| `MemberRepositoryImpl.java` | infra | Repository 구현체 |
-| `MemberTest.java` | domain/test | 도메인 테스트 |
-| `MemberRepositoryTest.java` | infra/test | Repository 테스트 |
+| `Role.java` | domain/member | ✅ 완료 |
+| `Member.java` | domain/member | ✅ 완료 |
+| `MemberRepository.java` | domain/member | ✅ 완료 |
+| `MemberEntity.java` | infra/member | ✅ 완료 |
+| `MemberJpaRepository.java` | infra/member | ✅ 완료 |
+| `MemberRepositoryImpl.java` | infra/member | ✅ 완료 |
+| `Organization.java` | domain/organization | ✅ 완료 |
+| `OrganizationRepository.java` | domain/organization | ✅ 완료 |
+| `OrganizationEntity.java` | infra/organization | ✅ 완료 |
+| `OrganizationJpaRepository.java` | infra/organization | ✅ 완료 |
+| `OrganizationRepositoryImpl.java` | infra/organization | ✅ 완료 |
+| `EmailVerification.java` | domain/auth | ✅ 완료 |
+| `EmailVerificationRepository.java` | domain/auth | ✅ 완료 |
+| `EmailVerificationEntity.java` | infra/auth | ✅ 완료 |
+| `EmailVerificationJpaRepository.java` | infra/auth | ✅ 완료 |
+| `EmailVerificationRepositoryImpl.java` | infra/auth | ✅ 완료 |
+| `RefreshToken.java` | domain/auth | ✅ 완료 |
+| `RefreshTokenRepository.java` | domain/auth | ✅ 완료 |
+| `RefreshTokenEntity.java` | infra/auth | ✅ 완료 |
+| `RefreshTokenJpaRepository.java` | infra/auth | ✅ 완료 |
+| `RefreshTokenRepositoryImpl.java` | infra/auth | ✅ 완료 |
 
 ---
 
-## 8. 다음 Phase
+## 10. Member 수정 사항
+
+Member에 `certificateUrl` 필드 추가 필요:
+
+```java
+// Member.java
+private String certificateUrl;  // 재직증명서 URL
+
+public void setCertificateUrl(String certificateUrl) {
+    this.certificateUrl = certificateUrl;
+    this.updatedAt = LocalDateTime.now();
+}
+```
+
+---
+
+## 11. 다음 Phase
 
 → [Phase 03: Security + JWT](./phase03-security.md)
