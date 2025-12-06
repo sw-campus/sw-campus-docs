@@ -10,7 +10,7 @@
 
 ## 2. 완료 조건 (Definition of Done)
 
-- [ ] EmailVerification 도메인 구현
+- [x] EmailVerification 도메인 구현 ✅ **Phase 02 완료**
 - [ ] MailService 구현 (SMTP)
 - [ ] 이메일 인증 발송 API
 - [ ] 이메일 인증 검증 API
@@ -48,16 +48,21 @@
 sw-campus-domain/
 └── src/main/java/com/swcampus/domain/
     └── auth/
-        ├── EmailVerification.java
-        ├── EmailVerificationRepository.java
-        └── EmailService.java
+        ├── EmailVerification.java           ✅ Phase 02 완료
+        ├── EmailVerificationRepository.java ✅ Phase 02 완료
+        ├── EmailService.java
+        └── MailSender.java
 
 sw-campus-infra/db-postgres/
 └── src/main/java/com/swcampus/infra/postgres/
     └── auth/
-        ├── EmailVerificationEntity.java
-        ├── EmailVerificationJpaRepository.java
-        └── EmailVerificationRepositoryImpl.java
+        ├── EmailVerificationEntity.java        ✅ Phase 02 완료
+        ├── EmailVerificationJpaRepository.java ✅ Phase 02 완료
+        └── EmailVerificationRepositoryImpl.java ✅ Phase 02 완료
+
+sw-campus-infra/
+└── mail/
+    └── SmtpMailSender.java
 
 sw-campus-api/
 └── src/main/java/com/swcampus/api/
@@ -69,60 +74,15 @@ sw-campus-api/
             └── EmailStatusResponse.java
 ```
 
+> ✅ **Phase 02에서 완료된 항목**: EmailVerification 도메인/인프라는 이미 구현됨
+
 ---
 
 ## 6. TDD Tasks
 
 ### 6.1 Red: 테스트 작성
 
-**EmailVerificationTest.java**
-```java
-@DisplayName("EmailVerification 도메인 테스트")
-class EmailVerificationTest {
-
-    @Test
-    @DisplayName("이메일 인증을 생성할 수 있다")
-    void create() {
-        // given
-        String email = "user@example.com";
-
-        // when
-        EmailVerification verification = EmailVerification.create(email);
-
-        // then
-        assertThat(verification.getEmail()).isEqualTo(email);
-        assertThat(verification.getToken()).isNotBlank();
-        assertThat(verification.isVerified()).isFalse();
-        assertThat(verification.getExpiresAt()).isAfter(LocalDateTime.now());
-    }
-
-    @Test
-    @DisplayName("이메일 인증을 완료할 수 있다")
-    void verify() {
-        // given
-        EmailVerification verification = EmailVerification.create("user@example.com");
-
-        // when
-        verification.verify();
-
-        // then
-        assertThat(verification.isVerified()).isTrue();
-    }
-
-    @Test
-    @DisplayName("만료된 인증은 검증할 수 없다")
-    void verifyExpired() {
-        // given
-        EmailVerification verification = EmailVerification.create("user@example.com");
-        // 강제로 만료 처리 (테스트용)
-        ReflectionTestUtils.setField(verification, "expiresAt", LocalDateTime.now().minusHours(1));
-
-        // when & then
-        assertThatThrownBy(verification::verify)
-            .isInstanceOf(TokenExpiredException.class);
-    }
-}
-```
+> ✅ **EmailVerificationTest.java** - Phase 02에서 완료됨 (EmailVerificationTest 참조)
 
 **EmailServiceTest.java**
 ```java
@@ -262,51 +222,9 @@ class AuthControllerEmailTest {
 
 ### 6.2 Green: 구현
 
-**EmailVerification.java**
-```java
-@Getter
-public class EmailVerification {
-    private Long id;
-    private String email;
-    private String token;
-    private boolean verified;
-    private LocalDateTime expiresAt;
-    private LocalDateTime createdAt;
-
-    private static final long EXPIRY_HOURS = 24;
-
-    public static EmailVerification create(String email) {
-        EmailVerification verification = new EmailVerification();
-        verification.email = email;
-        verification.token = UUID.randomUUID().toString();
-        verification.verified = false;
-        verification.expiresAt = LocalDateTime.now().plusHours(EXPIRY_HOURS);
-        verification.createdAt = LocalDateTime.now();
-        return verification;
-    }
-
-    public void verify() {
-        if (isExpired()) {
-            throw new TokenExpiredException();
-        }
-        this.verified = true;
-    }
-
-    public boolean isExpired() {
-        return LocalDateTime.now().isAfter(expiresAt);
-    }
-}
-```
-
-**EmailVerificationRepository.java**
-```java
-public interface EmailVerificationRepository {
-    EmailVerification save(EmailVerification verification);
-    Optional<EmailVerification> findByToken(String token);
-    Optional<EmailVerification> findByEmailAndVerified(String email, boolean verified);
-    void deleteByEmail(String email);
-}
-```
+> ✅ **EmailVerification.java, EmailVerificationRepository.java** - Phase 02에서 완료됨
+> - `sw-campus-domain/src/main/java/com/swcampus/domain/auth/EmailVerification.java`
+> - `sw-campus-domain/src/main/java/com/swcampus/domain/auth/EmailVerificationRepository.java`
 
 **EmailService.java**
 ```java
@@ -493,17 +411,19 @@ curl -X GET "http://localhost:8080/api/v1/auth/email/status?email=test@example.c
 
 ## 8. 산출물
 
-| 파일 | 위치 | 설명 |
-|------|------|------|
-| `EmailVerification.java` | domain | 이메일 인증 도메인 |
-| `EmailVerificationRepository.java` | domain | Repository 인터페이스 |
-| `EmailService.java` | domain | 이메일 인증 서비스 |
-| `MailSender.java` | domain | 메일 발송 인터페이스 |
-| `SmtpMailSender.java` | infra | SMTP 메일 발송 구현 |
-| `EmailVerificationEntity.java` | infra | JPA Entity |
-| `AuthController.java` | api | 인증 컨트롤러 |
-| `EmailSendRequest.java` | api | 요청 DTO |
-| `EmailStatusResponse.java` | api | 응답 DTO |
+| 파일 | 위치 | 설명 | 상태 |
+|------|------|------|------|
+| `EmailVerification.java` | domain | 이메일 인증 도메인 | ✅ Phase 02 완료 |
+| `EmailVerificationRepository.java` | domain | Repository 인터페이스 | ✅ Phase 02 완료 |
+| `EmailService.java` | domain | 이메일 인증 서비스 | 구현 예정 |
+| `MailSender.java` | domain | 메일 발송 인터페이스 | 구현 예정 |
+| `SmtpMailSender.java` | infra | SMTP 메일 발송 구현 | 구현 예정 |
+| `EmailVerificationEntity.java` | infra | JPA Entity | ✅ Phase 02 완료 |
+| `EmailVerificationJpaRepository.java` | infra | JPA Repository | ✅ Phase 02 완료 |
+| `EmailVerificationRepositoryImpl.java` | infra | Repository 구현체 | ✅ Phase 02 완료 |
+| `AuthController.java` | api | 인증 컨트롤러 | 구현 예정 |
+| `EmailSendRequest.java` | api | 요청 DTO | 구현 예정 |
+| `EmailStatusResponse.java` | api | 응답 DTO | 구현 예정 |
 
 ---
 

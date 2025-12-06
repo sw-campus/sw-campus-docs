@@ -500,4 +500,4 @@ curl -X POST http://localhost:8080/api/v1/auth/signup \
 
 ## 10. 다음 Phase
 
-→ [Phase 06: 회원가입 - 교육제공자](./phase06-signup-provider.md)
+→ [Phase 06: 회원가입 - 기관](./phase06-signup-organization.md)

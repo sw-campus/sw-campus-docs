@@ -73,7 +73,7 @@ com.swcampus.api/
 │   ├── request/
 │   │   ├── EmailSendRequest.java
 │   │   ├── SignupRequest.java
-│   │   ├── ProviderSignupRequest.java
+│   │   ├── OrganizationSignupRequest.java
 │   │   ├── LoginRequest.java
 │   │   ├── PasswordChangeRequest.java
 │   │   ├── PasswordResetRequest.java
@@ -114,7 +114,7 @@ com.swcampus.domain/
 │   ├── Member.java
 │   ├── MemberRepository.java
 │   ├── MemberService.java
-│   └── Role.java (enum: USER, PROVIDER, ADMIN)
+│   └── Role.java (enum: USER, ORGANIZATION, ADMIN)
 ```
 
 #### sw-campus-infra/db-postgres
@@ -242,9 +242,9 @@ com.swcampus.infra.postgres/
 
 ---
 
-#### `POST /api/v1/auth/signup/provider`
+#### `POST /api/v1/auth/signup/organization`
 
-교육 제공자 회원가입
+기관 담당자 회원가입
 
 **Request** `multipart/form-data`
 | 필드 | 타입 | 필수 | 설명 |
@@ -261,10 +261,10 @@ com.swcampus.infra.postgres/
 ```json
 {
   "userId": 1,
-  "email": "provider@example.com",
-  "name": "김제공",
-  "nickname": "제공자",
-  "role": "PROVIDER",
+  "email": "org@example.com",
+  "name": "김기관",
+  "nickname": "기관담당자",
+  "role": "ORGANIZATION",
   "orgAuth": 0
 }
 ```
@@ -368,7 +368,7 @@ Set-Cookie: refreshToken=...; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age
 }
 ```
 
-> PROVIDER인 경우 `orgAuth` 필드 추가 반환 (0: 미승인, 1: 승인)
+> ORGANIZATION인 경우 `orgAuth` 필드 추가 반환 (0: 미승인, 1: 승인)
 
 **Errors**
 - `401` AUTH003: 이메일 또는 비밀번호 불일치
@@ -487,8 +487,8 @@ Cookie: accessToken=...
 ### 4.1 기존 테이블 (MEMBERS)
 
 ```sql
--- 기존 ERD 기반, 컬럼명 확인 필요
-CREATE TYPE member_role AS ENUM ('USER', 'PROVIDER', 'ADMIN');
+-- 기존 ERD 기반, 컨럼명 확인 필요
+CREATE TYPE member_role AS ENUM ('USER', 'ORGANIZATION', 'ADMIN');
 
 CREATE TABLE MEMBERS (
     USER_ID BIGSERIAL PRIMARY KEY,
@@ -649,7 +649,7 @@ Path: /
 
 - [회원가입/로그인 시퀀스](../../sequence/auth/signup_login_diagram.md)
 - [관리자 로그인 시퀀스](../../sequence/auth/admin_login_diagram.md)
-- [교육제공자 승인 시퀀스](../../sequence/auth/admin_provider_approval_diagram.md)
+- [기관 담당자 승인 시퀀스](../../sequence/auth/admin_provider_approval_diagram.md)
 
 ---
 

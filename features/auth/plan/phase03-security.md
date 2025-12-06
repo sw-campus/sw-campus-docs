@@ -34,15 +34,18 @@ sw-campus-api/
 └── src/main/java/com/swcampus/api/
     └── config/
         ├── SecurityConfig.java
-        └── CorsConfig.java
+        ├── CorsConfig.java
+        └── CookieUtil.java
+    └── security/
+        └── JwtAuthenticationFilter.java
 
 sw-campus-domain/
 └── src/main/java/com/swcampus/domain/
     └── auth/
         ├── TokenProvider.java
         ├── TokenInfo.java
-        ├── RefreshToken.java
-        ├── RefreshTokenRepository.java
+        ├── RefreshToken.java              ✅ Phase 02 완료
+        ├── RefreshTokenRepository.java    ✅ Phase 02 완료
         └── exception/
             ├── TokenExpiredException.java
             └── InvalidTokenException.java
@@ -50,10 +53,12 @@ sw-campus-domain/
 sw-campus-infra/db-postgres/
 └── src/main/java/com/swcampus/infra/postgres/
     └── auth/
-        ├── RefreshTokenEntity.java
-        ├── RefreshTokenJpaRepository.java
-        └── RefreshTokenRepositoryImpl.java
+        ├── RefreshTokenEntity.java        ✅ Phase 02 완료
+        ├── RefreshTokenJpaRepository.java ✅ Phase 02 완료
+        └── RefreshTokenRepositoryImpl.java ✅ Phase 02 완료
 ```
+
+> ✅ **Phase 02에서 완료된 항목**: RefreshToken 도메인/인프라는 이미 구현됨
 
 ---
 
@@ -147,64 +152,7 @@ class TokenProviderTest {
 }
 ```
 
-**RefreshTokenRepositoryTest.java**
-```java
-@DataJpaTest
-@DisplayName("RefreshTokenRepository 테스트")
-class RefreshTokenRepositoryTest {
-
-    @Autowired
-    private RefreshTokenJpaRepository jpaRepository;
-
-    private RefreshTokenRepositoryImpl repository;
-
-    @BeforeEach
-    void setUp() {
-        repository = new RefreshTokenRepositoryImpl(jpaRepository);
-    }
-
-    @Test
-    @DisplayName("Refresh Token을 저장할 수 있다")
-    void save() {
-        // given
-        RefreshToken refreshToken = RefreshToken.create(1L, "token-value", 86400L);
-
-        // when
-        RefreshToken saved = repository.save(refreshToken);
-
-        // then
-        assertThat(saved.getId()).isNotNull();
-    }
-
-    @Test
-    @DisplayName("User ID로 Refresh Token을 조회할 수 있다")
-    void findByUserId() {
-        // given
-        RefreshToken refreshToken = RefreshToken.create(1L, "token-value", 86400L);
-        repository.save(refreshToken);
-
-        // when
-        Optional<RefreshToken> found = repository.findByUserId(1L);
-
-        // then
-        assertThat(found).isPresent();
-    }
-
-    @Test
-    @DisplayName("User ID로 Refresh Token을 삭제할 수 있다")
-    void deleteByUserId() {
-        // given
-        RefreshToken refreshToken = RefreshToken.create(1L, "token-value", 86400L);
-        repository.save(refreshToken);
-
-        // when
-        repository.deleteByUserId(1L);
-
-        // then
-        assertThat(repository.findByUserId(1L)).isEmpty();
-    }
-}
-```
+> ✅ **RefreshTokenRepositoryTest.java** - Phase 02에서 완료됨 (RefreshTokenRepositoryTest 참조)
 
 ### 5.2 Green: 구현
 
@@ -311,40 +259,9 @@ public class TokenProvider {
 }
 ```
 
-**RefreshToken.java (Domain)**
-```java
-@Getter
-public class RefreshToken {
-    private Long id;
-    private Long userId;
-    private String token;
-    private LocalDateTime expiresAt;
-    private LocalDateTime createdAt;
-
-    public static RefreshToken create(Long userId, String token, long validitySeconds) {
-        RefreshToken refreshToken = new RefreshToken();
-        refreshToken.userId = userId;
-        refreshToken.token = token;
-        refreshToken.expiresAt = LocalDateTime.now().plusSeconds(validitySeconds);
-        refreshToken.createdAt = LocalDateTime.now();
-        return refreshToken;
-    }
-
-    public boolean isExpired() {
-        return LocalDateTime.now().isAfter(expiresAt);
-    }
-}
-```
-
-**RefreshTokenRepository.java (Domain Interface)**
-```java
-public interface RefreshTokenRepository {
-    RefreshToken save(RefreshToken refreshToken);
-    Optional<RefreshToken> findByUserId(Long userId);
-    Optional<RefreshToken> findByToken(String token);
-    void deleteByUserId(Long userId);
-}
-```
+> ✅ **RefreshToken.java, RefreshTokenRepository.java** - Phase 02에서 완료됨
+> - `sw-campus-domain/src/main/java/com/swcampus/domain/auth/RefreshToken.java`
+> - `sw-campus-domain/src/main/java/com/swcampus/domain/auth/RefreshTokenRepository.java`
 
 **SecurityConfig.java**
 ```java
@@ -523,17 +440,18 @@ curl -X GET http://localhost:8080/api/v1/users   # 401 Unauthorized
 
 ## 8. 산출물
 
-| 파일 | 위치 | 설명 |
-|------|------|------|
-| `TokenProvider.java` | domain | JWT 토큰 생성/검증 |
-| `TokenInfo.java` | domain | 토큰 정보 DTO |
-| `RefreshToken.java` | domain | Refresh Token 도메인 |
-| `RefreshTokenRepository.java` | domain | Repository 인터페이스 |
-| `RefreshTokenEntity.java` | infra | JPA Entity |
-| `RefreshTokenRepositoryImpl.java` | infra | Repository 구현체 |
-| `SecurityConfig.java` | api | Security 설정 |
-| `JwtAuthenticationFilter.java` | api | JWT 인증 필터 |
-| `CookieUtil.java` | api | Cookie 유틸리티 |
+| 파일 | 위치 | 설명 | 상태 |
+|------|------|------|------|
+| `TokenProvider.java` | domain | JWT 토큰 생성/검증 | 구현 예정 |
+| `TokenInfo.java` | domain | 토큰 정보 DTO | 구현 예정 |
+| `RefreshToken.java` | domain | Refresh Token 도메인 | ✅ Phase 02 완료 |
+| `RefreshTokenRepository.java` | domain | Repository 인터페이스 | ✅ Phase 02 완료 |
+| `RefreshTokenEntity.java` | infra | JPA Entity | ✅ Phase 02 완료 |
+| `RefreshTokenJpaRepository.java` | infra | JPA Repository | ✅ Phase 02 완료 |
+| `RefreshTokenRepositoryImpl.java` | infra | Repository 구현체 | ✅ Phase 02 완료 |
+| `SecurityConfig.java` | api | Security 설정 | 구현 예정 |
+| `JwtAuthenticationFilter.java` | api | JWT 인증 필터 | 구현 예정 |
+| `CookieUtil.java` | api | Cookie 유틸리티 | 구현 예정 |
 
 ---
 

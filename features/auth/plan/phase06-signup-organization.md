@@ -1,19 +1,19 @@
-# Phase 06: 회원가입 - 교육제공자
+# Phase 06: 회원가입 - 기관
 
 > 예상 시간: 1.5시간
 
 ## 1. 목표
 
-교육제공자(PROVIDER) 회원가입 기능과 S3 파일 업로드를 구현합니다.
+기관(ORGANIZATION) 회원가입 기능과 S3 파일 업로드를 구현합니다.
 
 ---
 
 ## 2. 완료 조건 (Definition of Done)
 
-- [ ] 교육제공자 회원가입 API 구현 (multipart/form-data)
+- [ ] 기관 회원가입 API 구현 (multipart/form-data)
 - [ ] S3 파일 업로드 서비스 구현
 - [ ] 재직증명서 이미지 저장
-- [ ] PROVIDER Role 및 ORG_AUTH=0 설정
+- [ ] ORGANIZATION Role 및 ORG_AUTH=0 설정
 - [ ] 단위 테스트 및 통합 테스트 통과
 
 ---
@@ -22,8 +22,8 @@
 
 | US | 설명 |
 |----|------|
-| US-09 | 교육제공자 재직증명서 업로드 |
-| US-10 | 교육제공자 가입 후 승인 대기 안내 |
+| US-09 | 기관 담당자 재직증명서 업로드 |
+| US-10 | 기관 가입 후 승인 대기 안내 |
 
 ---
 
@@ -31,7 +31,7 @@
 
 | Method | Endpoint | Content-Type | 설명 |
 |--------|----------|--------------|------|
-| POST | `/api/v1/auth/signup/provider` | multipart/form-data | 교육제공자 회원가입 |
+| POST | `/api/v1/auth/signup/organization` | multipart/form-data | 기관 회원가입 |
 
 ---
 
@@ -43,17 +43,16 @@ sw-campus-domain/
     └── storage/
         └── FileStorageService.java
 
-sw-campus-infra/db-postgres/
-└── src/main/java/com/swcampus/infra/
-    └── s3/
-        ├── S3Config.java
-        └── S3FileStorageService.java
+sw-campus-infra/
+└── s3/
+    ├── S3Config.java
+    └── S3FileStorageService.java
 
 sw-campus-api/
 └── src/main/java/com/swcampus/api/
     └── auth/
         └── request/
-            └── ProviderSignupRequest.java
+            └── OrganizationSignupRequest.java
 ```
 
 ---
@@ -113,11 +112,11 @@ class S3FileStorageServiceTest {
 }
 ```
 
-**AuthServiceProviderSignupTest.java**
+**AuthServiceOrganizationSignupTest.java**
 ```java
 @ExtendWith(MockitoExtension.class)
-@DisplayName("AuthService - 교육제공자 회원가입 테스트")
-class AuthServiceProviderSignupTest {
+@DisplayName("AuthService - 기관 회원가입 테스트")
+class AuthServiceOrganizationSignupTest {
 
     @Mock
     private MemberRepository memberRepository;
@@ -135,15 +134,15 @@ class AuthServiceProviderSignupTest {
     private AuthService authService;
 
     @Test
-    @DisplayName("교육제공자 회원가입에 성공한다")
-    void signupProvider() {
+    @DisplayName("기관 회원가입에 성공한다")
+    void signupOrganization() {
         // given
         byte[] imageContent = "fake image".getBytes();
-        ProviderSignupCommand command = ProviderSignupCommand.builder()
-            .email("provider@example.com")
+        OrganizationSignupCommand command = OrganizationSignupCommand.builder()
+            .email("org@example.com")
             .password("Password1!")
-            .name("김제공")
-            .nickname("제공자")
+            .name("김기관")
+            .nickname("기관담당자")
             .phone("010-9876-5432")
             .location("서울시 서초구")
             .certificateImage(imageContent)
@@ -164,41 +163,41 @@ class AuthServiceProviderSignupTest {
         });
 
         // when
-        Member member = authService.signupProvider(command);
+        Member member = authService.signupOrganization(command);
 
         // then
-        assertThat(member.getRole()).isEqualTo(Role.PROVIDER);
+        assertThat(member.getRole()).isEqualTo(Role.ORGANIZATION);
         assertThat(member.getOrgAuth()).isEqualTo(0);  // 미승인
         verify(fileStorageService).upload(imageContent, "certificate.jpg", "image/jpeg");
     }
 
     @Test
-    @DisplayName("재직증명서 없이 교육제공자 가입 시 실패한다")
-    void signupProvider_noCertificate() {
+    @DisplayName("재직증명서 없이 기관 가입 시 실패한다")
+    void signupOrganization_noCertificate() {
         // given
-        ProviderSignupCommand command = ProviderSignupCommand.builder()
-            .email("provider@example.com")
+        OrganizationSignupCommand command = OrganizationSignupCommand.builder()
+            .email("org@example.com")
             .password("Password1!")
-            .name("김제공")
-            .nickname("제공자")
+            .name("김기관")
+            .nickname("기관담당자")
             .phone("010-9876-5432")
             .location("서울시 서초구")
             .certificateImage(null)  // 재직증명서 없음
             .build();
 
         // when & then
-        assertThatThrownBy(() -> authService.signupProvider(command))
+        assertThatThrownBy(() -> authService.signupOrganization(command))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("재직증명서");
     }
 }
 ```
 
-**AuthControllerProviderSignupTest.java**
+**AuthControllerOrganizationSignupTest.java**
 ```java
 @WebMvcTest(AuthController.class)
-@DisplayName("AuthController - 교육제공자 회원가입 테스트")
-class AuthControllerProviderSignupTest {
+@DisplayName("AuthController - 기관 회원가입 테스트")
+class AuthControllerOrganizationSignupTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -207,8 +206,8 @@ class AuthControllerProviderSignupTest {
     private AuthService authService;
 
     @Test
-    @DisplayName("POST /api/v1/auth/signup/provider - 교육제공자 회원가입 성공")
-    void signupProvider() throws Exception {
+    @DisplayName("POST /api/v1/auth/signup/organization - 기관 회원가입 성공")
+    void signupOrganization() throws Exception {
         // given
         MockMultipartFile certificate = new MockMultipartFile(
             "certificateImage",
@@ -219,37 +218,37 @@ class AuthControllerProviderSignupTest {
 
         Member member = mock(Member.class);
         when(member.getId()).thenReturn(1L);
-        when(member.getEmail()).thenReturn("provider@example.com");
-        when(member.getName()).thenReturn("김제공");
-        when(member.getNickname()).thenReturn("제공자");
-        when(member.getRole()).thenReturn(Role.PROVIDER);
+        when(member.getEmail()).thenReturn("org@example.com");
+        when(member.getName()).thenReturn("김기관");
+        when(member.getNickname()).thenReturn("기관담당자");
+        when(member.getRole()).thenReturn(Role.ORGANIZATION);
         when(member.getOrgAuth()).thenReturn(0);
-        when(authService.signupProvider(any())).thenReturn(member);
+        when(authService.signupOrganization(any())).thenReturn(member);
 
         // when & then
-        mockMvc.perform(multipart("/api/v1/auth/signup/provider")
+        mockMvc.perform(multipart("/api/v1/auth/signup/organization")
                 .file(certificate)
-                .param("email", "provider@example.com")
+                .param("email", "org@example.com")
                 .param("password", "Password1!")
-                .param("name", "김제공")
-                .param("nickname", "제공자")
+                .param("name", "김기관")
+                .param("nickname", "기관담당자")
                 .param("phone", "010-9876-5432")
                 .param("location", "서울시 서초구"))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.userId").value(1))
-            .andExpect(jsonPath("$.role").value("PROVIDER"))
+            .andExpect(jsonPath("$.role").value("ORGANIZATION"))
             .andExpect(jsonPath("$.orgAuth").value(0));
     }
 
     @Test
-    @DisplayName("POST /api/v1/auth/signup/provider - 재직증명서 누락 시 실패")
-    void signupProvider_noCertificate() throws Exception {
+    @DisplayName("POST /api/v1/auth/signup/organization - 재직증명서 누락 시 실패")
+    void signupOrganization_noCertificate() throws Exception {
         // when & then
-        mockMvc.perform(multipart("/api/v1/auth/signup/provider")
-                .param("email", "provider@example.com")
+        mockMvc.perform(multipart("/api/v1/auth/signup/organization")
+                .param("email", "org@example.com")
                 .param("password", "Password1!")
-                .param("name", "김제공")
-                .param("nickname", "제공자")
+                .param("name", "김기관")
+                .param("nickname", "기관담당자")
                 .param("phone", "010-9876-5432")
                 .param("location", "서울시 서초구"))
             .andExpect(status().isBadRequest());
@@ -361,11 +360,11 @@ public class S3FileStorageService implements FileStorageService {
 }
 ```
 
-**ProviderSignupCommand.java**
+**OrganizationSignupCommand.java**
 ```java
 @Getter
 @Builder
-public class ProviderSignupCommand {
+public class OrganizationSignupCommand {
     private String email;
     private String password;
     private String name;
@@ -378,7 +377,7 @@ public class ProviderSignupCommand {
 }
 ```
 
-**AuthService.java (교육제공자 회원가입 추가)**
+**AuthService.java (기관 회원가입 추가)**
 ```java
 @Service
 @RequiredArgsConstructor
@@ -393,7 +392,7 @@ public class AuthService {
 
     // ... 기존 signup 메서드 ...
 
-    public Member signupProvider(ProviderSignupCommand command) {
+    public Member signupOrganization(OrganizationSignupCommand command) {
         // 1. 재직증명서 확인
         if (command.getCertificateImage() == null || command.getCertificateImage().length == 0) {
             throw new IllegalArgumentException("재직증명서는 필수입니다");
@@ -421,8 +420,8 @@ public class AuthService {
         // 6. 비밀번호 암호화
         String encodedPassword = passwordEncoder.encode(command.getPassword());
 
-        // 7. 교육제공자 생성 (ORG_AUTH = 0: 미승인)
-        Member member = Member.createProvider(
+        // 7. 기관 담당자 생성 (ORG_AUTH = 0: 미승인)
+        Member member = Member.createOrganization(
             command.getEmail(),
             encodedPassword,
             command.getName(),
@@ -438,11 +437,11 @@ public class AuthService {
 }
 ```
 
-**ProviderSignupRequest.java**
+**OrganizationSignupRequest.java**
 ```java
 @Getter
 @Setter
-public class ProviderSignupRequest {
+public class OrganizationSignupRequest {
     
     @NotBlank(message = "이메일은 필수입니다")
     @Email(message = "올바른 이메일 형식이 아닙니다")
@@ -463,8 +462,8 @@ public class ProviderSignupRequest {
     @NotBlank(message = "주소는 필수입니다")
     private String location;
 
-    public ProviderSignupCommand toCommand(MultipartFile certificateImage) throws IOException {
-        return ProviderSignupCommand.builder()
+    public OrganizationSignupCommand toCommand(MultipartFile certificateImage) throws IOException {
+        return OrganizationSignupCommand.builder()
             .email(email)
             .password(password)
             .name(name)
@@ -479,11 +478,11 @@ public class ProviderSignupRequest {
 }
 ```
 
-**ProviderSignupResponse.java**
+**OrganizationSignupResponse.java**
 ```java
 @Getter
 @AllArgsConstructor
-public class ProviderSignupResponse {
+public class OrganizationSignupResponse {
     private Long userId;
     private String email;
     private String name;
@@ -491,8 +490,8 @@ public class ProviderSignupResponse {
     private String role;
     private Integer orgAuth;
 
-    public static ProviderSignupResponse from(Member member) {
-        return new ProviderSignupResponse(
+    public static OrganizationSignupResponse from(Member member) {
+        return new OrganizationSignupResponse(
             member.getId(),
             member.getEmail(),
             member.getName(),
@@ -504,20 +503,20 @@ public class ProviderSignupResponse {
 }
 ```
 
-**AuthController.java (교육제공자 회원가입 추가)**
+**AuthController.java (기관 회원가입 추가)**
 ```java
-@PostMapping("/signup/provider")
-public ResponseEntity<ProviderSignupResponse> signupProvider(
-        @Valid @ModelAttribute ProviderSignupRequest request,
+@PostMapping("/signup/organization")
+public ResponseEntity<OrganizationSignupResponse> signupOrganization(
+        @Valid @ModelAttribute OrganizationSignupRequest request,
         @RequestParam("certificateImage") MultipartFile certificateImage) throws IOException {
     
     if (certificateImage.isEmpty()) {
         throw new IllegalArgumentException("재직증명서는 필수입니다");
     }
 
-    Member member = authService.signupProvider(request.toCommand(certificateImage));
+    Member member = authService.signupOrganization(request.toCommand(certificateImage));
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(ProviderSignupResponse.from(member));
+        .body(OrganizationSignupResponse.from(member));
 }
 ```
 
@@ -545,15 +544,15 @@ public class Member {
 ```bash
 # 테스트 실행
 ./gradlew test --tests "*S3FileStorageService*"
-./gradlew test --tests "*AuthService*Provider*"
-./gradlew test --tests "*AuthController*Provider*"
+./gradlew test --tests "*AuthService*Organization*"
+./gradlew test --tests "*AuthController*Organization*"
 
 # API 수동 테스트
-curl -X POST http://localhost:8080/api/v1/auth/signup/provider \
-  -F "email=provider@example.com" \
+curl -X POST http://localhost:8080/api/v1/auth/signup/organization \
+  -F "email=org@example.com" \
   -F "password=Password1!" \
-  -F "name=김제공" \
-  -F "nickname=제공자" \
+  -F "name=김기관" \
+  -F "nickname=기관담당자" \
   -F "phone=010-9876-5432" \
   -F "location=서울시 서초구" \
   -F "certificateImage=@/path/to/certificate.jpg"
@@ -568,11 +567,11 @@ curl -X POST http://localhost:8080/api/v1/auth/signup/provider \
 | `FileStorageService.java` | domain | 파일 저장 인터페이스 |
 | `S3Config.java` | infra | S3 설정 |
 | `S3FileStorageService.java` | infra | S3 구현체 |
-| `ProviderSignupCommand.java` | domain | 명령 객체 |
-| `ProviderSignupRequest.java` | api | 요청 DTO |
-| `ProviderSignupResponse.java` | api | 응답 DTO |
-| `AuthController.java` | api | 컨트롤러 (교육제공자 추가) |
-| `AuthService.java` | domain | 서비스 (교육제공자 추가) |
+| `OrganizationSignupCommand.java` | domain | 명령 객체 |
+| `OrganizationSignupRequest.java` | api | 요청 DTO |
+| `OrganizationSignupResponse.java` | api | 응답 DTO |
+| `AuthController.java` | api | 컨트롤러 (기관 추가) |
+| `AuthService.java` | domain | 서비스 (기관 추가) |
 
 ---
 
