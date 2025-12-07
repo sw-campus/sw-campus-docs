@@ -433,7 +433,7 @@ public class InvalidTokenException extends RuntimeException {
 
 # 애플리케이션 실행 후 Security 동작 확인
 curl -X GET http://localhost:8080/api/v1/health  # 200 OK
-curl -X GET http://localhost:8080/api/v1/users   # 401 Unauthorized
+curl -X GET http://localhost:8080/api/v1/members # 401 Unauthorized
 ```
 
 ---
