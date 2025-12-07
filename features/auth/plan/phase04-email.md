@@ -11,12 +11,12 @@
 ## 2. 완료 조건 (Definition of Done)
 
 - [x] EmailVerification 도메인 구현 ✅ **Phase 02 완료**
-- [ ] MailService 구현 (SMTP)
-- [ ] 이메일 인증 발송 API
-- [ ] 이메일 인증 검증 API
-- [ ] 이메일 인증 상태 확인 API
-- [ ] 단위 테스트 및 통합 테스트 통과
-- [ ] 테스트 커버리지 90% 이상
+- [x] MailService 구현 (SMTP) ✅
+- [x] 이메일 인증 발송 API ✅
+- [x] 이메일 인증 검증 API ✅
+- [x] 이메일 인증 상태 확인 API ✅
+- [x] 단위 테스트 및 통합 테스트 통과 ✅
+- [x] 테스트 커버리지 90% 이상 ✅
 
 ---
 
