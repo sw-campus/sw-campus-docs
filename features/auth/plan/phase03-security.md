@@ -10,11 +10,11 @@ Spring Security 설정과 JWT 토큰 Provider를 구현합니다.
 
 ## 2. 완료 조건 (Definition of Done)
 
-- [ ] Security 설정 완료 (Filter Chain)
-- [ ] TokenProvider 구현 (Access/Refresh Token 생성/검증)
-- [ ] JwtAuthenticationFilter 구현
-- [ ] Cookie 유틸리티 구현
-- [ ] 단위 테스트 통과
+- [x] Security 설정 완료 (Filter Chain)
+- [x] TokenProvider 구현 (Access/Refresh Token 생성/검증)
+- [x] JwtAuthenticationFilter 구현
+- [x] Cookie 유틸리티 구현
+- [x] 단위 테스트 통과
 - [ ] 테스트 커버리지 95% 이상
 
 ---
@@ -33,22 +33,21 @@ Spring Security 설정과 JWT 토큰 Provider를 구현합니다.
 sw-campus-api/
 └── src/main/java/com/swcampus/api/
     └── config/
-        ├── SecurityConfig.java
-        ├── CorsConfig.java
-        └── CookieUtil.java
+        ├── SecurityConfig.java            ✅ Phase 03 완료
+        └── CookieUtil.java                ✅ Phase 03 완료
     └── security/
-        └── JwtAuthenticationFilter.java
+        └── JwtAuthenticationFilter.java   ✅ Phase 03 완료
 
 sw-campus-domain/
 └── src/main/java/com/swcampus/domain/
     └── auth/
-        ├── TokenProvider.java
-        ├── TokenInfo.java
+        ├── TokenProvider.java             ✅ Phase 03 완료
+        ├── TokenInfo.java                 ✅ Phase 03 완료
         ├── RefreshToken.java              ✅ Phase 02 완료
         ├── RefreshTokenRepository.java    ✅ Phase 02 완료
         └── exception/
-            ├── TokenExpiredException.java
-            └── InvalidTokenException.java
+            ├── TokenExpiredException.java ✅ Phase 03 완료
+            └── InvalidTokenException.java ✅ Phase 03 완료
 
 sw-campus-infra/db-postgres/
 └── src/main/java/com/swcampus/infra/postgres/
@@ -58,7 +57,11 @@ sw-campus-infra/db-postgres/
         └── RefreshTokenRepositoryImpl.java ✅ Phase 02 완료
 ```
 
-> ✅ **Phase 02에서 완료된 항목**: RefreshToken 도메인/인프라는 이미 구현됨
+> ✅ **Phase 03 완료**: Security + JWT 구현 완료
+> 
+> **변경 사항**:
+> - `CorsConfig.java`: YAGNI 원칙으로 미구현 (필요 시 추가)
+> - JWT 의존성: api → domain 모듈로 이동
 
 ---
 
@@ -428,12 +431,14 @@ public class InvalidTokenException extends RuntimeException {
 
 ```bash
 # 테스트 실행
-./gradlew test --tests "*TokenProviderTest*"
-./gradlew test --tests "*RefreshTokenRepositoryTest*"
+./gradlew :sw-campus-domain:test --tests "*TokenProviderTest*"
+
+# 빌드 검증
+./gradlew build -x test
 
 # 애플리케이션 실행 후 Security 동작 확인
-curl -X GET http://localhost:8080/api/v1/health  # 200 OK
-curl -X GET http://localhost:8080/api/v1/members # 401 Unauthorized
+curl -X GET http://localhost:8080/actuator/health  # 200 OK
+curl -X GET http://localhost:8080/api/v1/members   # 401 Unauthorized
 ```
 
 ---
@@ -442,16 +447,19 @@ curl -X GET http://localhost:8080/api/v1/members # 401 Unauthorized
 
 | 파일 | 위치 | 설명 | 상태 |
 |------|------|------|------|
-| `TokenProvider.java` | domain | JWT 토큰 생성/검증 | 구현 예정 |
-| `TokenInfo.java` | domain | 토큰 정보 DTO | 구현 예정 |
+| `TokenProvider.java` | domain | JWT 토큰 생성/검증 | ✅ Phase 03 완료 |
+| `TokenInfo.java` | domain | 토큰 정보 DTO | ✅ Phase 03 완료 |
+| `TokenExpiredException.java` | domain | 토큰 만료 예외 | ✅ Phase 03 완료 |
+| `InvalidTokenException.java` | domain | 유효하지 않은 토큰 예외 | ✅ Phase 03 완료 |
+| `TokenProviderTest.java` | domain/test | 단위 테스트 (14개) | ✅ Phase 03 완료 |
 | `RefreshToken.java` | domain | Refresh Token 도메인 | ✅ Phase 02 완료 |
 | `RefreshTokenRepository.java` | domain | Repository 인터페이스 | ✅ Phase 02 완료 |
 | `RefreshTokenEntity.java` | infra | JPA Entity | ✅ Phase 02 완료 |
 | `RefreshTokenJpaRepository.java` | infra | JPA Repository | ✅ Phase 02 완료 |
 | `RefreshTokenRepositoryImpl.java` | infra | Repository 구현체 | ✅ Phase 02 완료 |
-| `SecurityConfig.java` | api | Security 설정 | 구현 예정 |
-| `JwtAuthenticationFilter.java` | api | JWT 인증 필터 | 구현 예정 |
-| `CookieUtil.java` | api | Cookie 유틸리티 | 구현 예정 |
+| `SecurityConfig.java` | api | Security 설정 | ✅ Phase 03 완료 |
+| `JwtAuthenticationFilter.java` | api | JWT 인증 필터 | ✅ Phase 03 완료 |
+| `CookieUtil.java` | api | Cookie 유틸리티 | ✅ Phase 03 완료 |
 
 ---
 
