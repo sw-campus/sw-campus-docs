@@ -44,20 +44,22 @@ SW Campus는 소프트웨어 교육 강의를 비교하고 리뷰할 수 있는 
   → 회원가입 → 이메일 인증 → 완료
 
 기관 담당자 (ORGANIZATION)
-  → 회원가입 (재직증명서 첨부) → 이메일 인증 → 미승인(ORG_AUTH=0) → 관리자 승인(ORG_AUTH=1)
+  → 회원가입 (재직증명서 첨부) → 이메일 인증 → Organization 생성 (PENDING) → 관리자 승인 (APPROVED)
 
 관리자 (ADMIN)
   → 시스템에서 직접 생성 (회원가입 불가)
 ```
 
-### 2.3 기관 담당자 승인 상태 (ORG_AUTH)
+### 2.3 기관 승인 상태 (Organization.approvalStatus)
 
-| 값 | 상태 | 설명 | 로그인 | 강의 등록 |
-|:--:|------|------|:------:|:--------:|
-| `0` | 미승인 | 승인 대기 | ✅ | ❌ |
-| `1` | 승인 | 승인 완료 | ✅ | ✅ |
+| 값 | 상태 | Enum | 설명 | 로그인 | 강의 등록 |
+|:--:|------|------|------|:------:|:--------:|
+| `0` | 대기 | `PENDING` | 승인 대기 | ✅ | ❌ |
+| `1` | 승인 | `APPROVED` | 승인 완료 | ✅ | ✅ |
+| `2` | 반려 | `REJECTED` | 승인 반려 | ✅ | ❌ |
 
-> **Note**: 반려 상태가 필요할 경우 `2`로 확장 가능 (TINYINT)
+> **Note**: 승인 상태는 Organization 테이블에서 관리 (TINYINT)
+> **변경 사항**: 기존 Member.orgAuth → Organization.approvalStatus로 이동
 
 ---
 
@@ -79,9 +81,9 @@ SW Campus는 소프트웨어 교육 강의를 비교하고 리뷰할 수 있는 
 | 구분 | 사용자 스토리 |
 |------|-------------|
 | US-05 | 기관 담당자는 일반 사용자 정보 + 재직증명서 이미지를 첨부하여 가입 신청할 수 있다 |
-| US-06 | 기관 담당자는 회원가입 시 `ROLE = ORGANIZATION`, `ORG_AUTH = 0`(미승인) 상태로 저장된다 |
-| US-07 | 기관 담당자는 미승인(`ORG_AUTH = 0`) 상태에서 로그인은 가능하나 강의 등록은 불가하다 |
-| US-08 | 기관 담당자는 관리자 승인 후 `ORG_AUTH = 1`(승인) 상태가 되어 강의 등록이 가능하다 |
+| US-06 | 기관 담당자는 회원가입 시 `ROLE = ORGANIZATION`으로 저장되고, Organization이 `approvalStatus = PENDING`(대기) 상태로 생성된다 |
+| US-07 | 기관 담당자는 미승인(`approvalStatus = PENDING`) 상태에서 로그인은 가능하나 강의 등록은 불가하다 |
+| US-08 | 기관 담당자는 관리자 승인 후 `approvalStatus = APPROVED`(승인) 상태가 되어 강의 등록이 가능하다 |
 
 #### 3.1.3 소셜 회원가입
 
@@ -202,9 +204,21 @@ SW Campus는 소프트웨어 교육 강의를 비교하고 리뷰할 수 있는 
 | NICKNAME | 닉네임 |
 | PHONE | 전화번호 |
 | ROLE | USER / ORGANIZATION / ADMIN |
-| ORG_AUTH | 기관 담당자 승인 여부 |
-| ORG_ID | 소속 기관 ID |
+| ORG_ID | 소속 기관 ID (FK → ORGANIZATIONS) |
 | LOCATION | 주소 |
+
+**ORGANIZATIONS 테이블**
+| 컬럼 | 용도 |
+|------|------|
+| ORG_ID | 기관 고유 ID |
+| USER_ID | 기관 담당자 ID (FK → MEMBERS) |
+| ORG_NAME | 기관명 |
+| DESCRIPTION | 기관 설명 |
+| APPROVAL_STATUS | 승인 상태 (0=PENDING, 1=APPROVED, 2=REJECTED) |
+| CERTIFICATE_URL | 재직증명서 URL |
+| GOV_AUTH | 정부 인증 정보 |
+| FACILITY_IMAGE_URL | 시설 이미지 URL |
+| ORG_LOGO_URL | 기관 로고 URL |
 
 ### 6.2 추가 필요 테이블
 
