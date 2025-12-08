@@ -1,6 +1,7 @@
 # Phase 07: 로그인/로그아웃
 
-> 예상 시간: 2시간
+> 예상 시간: 2시간  
+> **상태: ✅ 완료 (2025-12-08)**
 
 ## 1. 목표
 
@@ -10,12 +11,12 @@
 
 ## 2. 완료 조건 (Definition of Done)
 
-- [ ] 로그인 API 구현
-- [ ] 로그아웃 API 구현
-- [ ] Access Token, Refresh Token 발급 (Cookie)
-- [ ] Refresh Token DB 저장
-- [ ] 동시 로그인 제한 (기존 RT 삭제)
-- [ ] 단위 테스트 및 통합 테스트 통과
+- [x] 로그인 API 구현
+- [x] 로그아웃 API 구현
+- [x] Access Token, Refresh Token 발급 (Cookie)
+- [x] Refresh Token DB 저장
+- [x] 동시 로그인 제한 (기존 RT 삭제)
+- [x] 단위 테스트 및 통합 테스트 통과
 
 ---
 
