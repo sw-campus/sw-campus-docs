@@ -10,11 +10,11 @@ Refresh Token을 사용한 Access Token 갱신 기능을 구현합니다.
 
 ## 2. 완료 조건 (Definition of Done)
 
-- [ ] 토큰 갱신 API 구현
-- [ ] Refresh Token 유효성 검증
-- [ ] 새 Access Token 발급
-- [ ] 만료된 Refresh Token 처리
-- [ ] 단위 테스트 및 통합 테스트 통과
+- [x] 토큰 갱신 API 구현
+- [x] Refresh Token 유효성 검증
+- [x] 새 Access Token 발급
+- [x] 만료된 Refresh Token 처리
+- [x] 단위 테스트 및 통합 테스트 통과
 
 ---
 
@@ -63,23 +63,23 @@ class AuthServiceRefreshTest {
     void refresh() {
         // given
         String refreshToken = "valid-refresh-token";
-        Long userId = 1L;
+        Long memberId = 1L;
         
         RefreshToken storedToken = mock(RefreshToken.class);
-        when(storedToken.getUserId()).thenReturn(userId);
+        when(storedToken.getMemberId()).thenReturn(memberId);
         when(storedToken.getToken()).thenReturn(refreshToken);
         when(storedToken.isExpired()).thenReturn(false);
 
         Member member = mock(Member.class);
-        when(member.getId()).thenReturn(userId);
+        when(member.getId()).thenReturn(memberId);
         when(member.getEmail()).thenReturn("user@example.com");
         when(member.getRole()).thenReturn(Role.USER);
 
         when(tokenProvider.validateToken(refreshToken)).thenReturn(true);
-        when(tokenProvider.getUserId(refreshToken)).thenReturn(userId);
-        when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of(storedToken));
-        when(memberRepository.findById(userId)).thenReturn(Optional.of(member));
-        when(tokenProvider.createAccessToken(userId, "user@example.com", Role.USER))
+        when(tokenProvider.getMemberId(refreshToken)).thenReturn(memberId);
+        when(refreshTokenRepository.findByMemberId(memberId)).thenReturn(Optional.of(storedToken));
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(tokenProvider.createAccessToken(memberId, "user@example.com", Role.USER))
             .thenReturn("new-access-token");
 
         // when
@@ -106,11 +106,11 @@ class AuthServiceRefreshTest {
     void refresh_tokenNotInDb() {
         // given
         String refreshToken = "valid-but-not-in-db";
-        Long userId = 1L;
+        Long memberId = 1L;
         
         when(tokenProvider.validateToken(refreshToken)).thenReturn(true);
-        when(tokenProvider.getUserId(refreshToken)).thenReturn(userId);
-        when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(tokenProvider.getMemberId(refreshToken)).thenReturn(memberId);
+        when(refreshTokenRepository.findByMemberId(memberId)).thenReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> authService.refresh(refreshToken))
@@ -122,14 +122,14 @@ class AuthServiceRefreshTest {
     void refresh_tokenMismatch() {
         // given
         String refreshToken = "old-refresh-token";
-        Long userId = 1L;
+        Long memberId = 1L;
         
         RefreshToken storedToken = mock(RefreshToken.class);
         when(storedToken.getToken()).thenReturn("new-refresh-token");  // 다른 토큰
 
         when(tokenProvider.validateToken(refreshToken)).thenReturn(true);
-        when(tokenProvider.getUserId(refreshToken)).thenReturn(userId);
-        when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of(storedToken));
+        when(tokenProvider.getMemberId(refreshToken)).thenReturn(memberId);
+        when(refreshTokenRepository.findByMemberId(memberId)).thenReturn(Optional.of(storedToken));
 
         // when & then
         assertThatThrownBy(() -> authService.refresh(refreshToken))
@@ -141,15 +141,15 @@ class AuthServiceRefreshTest {
     void refresh_expiredToken() {
         // given
         String refreshToken = "expired-refresh-token";
-        Long userId = 1L;
+        Long memberId = 1L;
         
         RefreshToken storedToken = mock(RefreshToken.class);
         when(storedToken.getToken()).thenReturn(refreshToken);
         when(storedToken.isExpired()).thenReturn(true);
 
         when(tokenProvider.validateToken(refreshToken)).thenReturn(true);
-        when(tokenProvider.getUserId(refreshToken)).thenReturn(userId);
-        when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of(storedToken));
+        when(tokenProvider.getMemberId(refreshToken)).thenReturn(memberId);
+        when(refreshTokenRepository.findByMemberId(memberId)).thenReturn(Optional.of(storedToken));
 
         // when & then
         assertThatThrownBy(() -> authService.refresh(refreshToken))
@@ -254,10 +254,10 @@ public class AuthService {
         }
 
         // 2. 토큰에서 사용자 ID 추출
-        Long userId = tokenProvider.getUserId(refreshToken);
+        Long memberId = tokenProvider.getMemberId(refreshToken);
 
         // 3. DB에서 저장된 Refresh Token 조회
-        RefreshToken storedToken = refreshTokenRepository.findByUserId(userId)
+        RefreshToken storedToken = refreshTokenRepository.findByMemberId(memberId)
             .orElseThrow(InvalidTokenException::new);
 
         // 4. 토큰 값 일치 확인 (동시 로그인 제한)
@@ -267,12 +267,12 @@ public class AuthService {
 
         // 5. 만료 확인
         if (storedToken.isExpired()) {
-            refreshTokenRepository.deleteByUserId(userId);
+            refreshTokenRepository.deleteByMemberId(memberId);
             throw new TokenExpiredException();
         }
 
         // 6. 사용자 정보 조회
-        Member member = memberRepository.findById(userId)
+        Member member = memberRepository.findById(memberId)
             .orElseThrow(InvalidTokenException::new);
 
         // 7. 새 Access Token 발급
