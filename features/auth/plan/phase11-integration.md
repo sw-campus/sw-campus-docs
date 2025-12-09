@@ -45,10 +45,10 @@
 ### 3.3 OAuth 시나리오
 
 ```
-1. Google 로그인 (신규) → isNewUser: true
+1. Google 로그인 (신규) → needsProfileCompletion: true
 2. 추가 정보 입력
 3. 로그아웃
-4. Google 로그인 (기존) → isNewUser: false
+4. Google 로그인 (기존) → needsProfileCompletion: false
 5. GitHub 로그인 (동일 이메일) → 계정 연동
 ```
 

@@ -81,10 +81,12 @@ com.swcampus.api/
 │   └── response/
 │       ├── EmailStatusResponse.java
 │       └── SignupResponse.java
-├── oauth/
+├── auth/
 │   ├── OAuthController.java
-│   └── request/
-│       └── OAuthCallbackRequest.java
+│   ├── request/
+│   │   └── OAuthCallbackRequest.java
+│   └── response/
+│       └── OAuthLoginResponse.java
 ```
 
 #### sw-campus-domain
@@ -107,6 +109,10 @@ com.swcampus.domain/
 │       └── DuplicateEmailException.java
 ├── oauth/
 │   ├── OAuthService.java
+│   ├── OAuthClient.java (interface)
+│   ├── OAuthClientFactory.java (interface)
+│   ├── OAuthUserInfo.java
+│   ├── OAuthLoginResult.java
 │   ├── SocialAccount.java
 │   ├── SocialAccountRepository.java
 │   └── OAuthProvider.java (enum: GOOGLE, GITHUB)
@@ -297,45 +303,15 @@ Set-Cookie: refreshToken=...; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age
 
 ```json
 {
-  "userId": 1,
+  "memberId": 1,
   "email": "user@gmail.com",
   "name": "홍길동",
-  "role": "USER",
-  "isNewUser": false
-}
-```
-
-> `isNewUser: true`인 경우 추가 정보(닉네임, 전화번호, 주소) 입력 필요
-
----
-
-#### `PATCH /api/v1/auth/oauth/profile`
-
-소셜 로그인 후 추가 정보 입력 (최초 가입 시)
-
-**Request**
-```
-Cookie: accessToken=...
-```
-
-```json
-{
-  "nickname": "길동이",
-  "phone": "010-1234-5678",
-  "location": "서울시 강남구"
-}
-```
-
-**Response** `200 OK`
-```json
-{
-  "userId": 1,
-  "email": "user@gmail.com",
-  "name": "홍길동",
-  "nickname": "길동이",
+  "nickname": "사용자_a1b2c3d4",
   "role": "USER"
 }
 ```
+
+> 신규 OAuth 사용자는 랜덤 닉네임("사용자_" + UUID 8자리)이 자동 생성됩니다. phone, location은 선택 사항입니다.
 
 ---
 

@@ -10,19 +10,19 @@ Google, GitHub 소셜 로그인 기능을 구현합니다.
 
 ## 2. 완료 조건 (Definition of Done)
 
-- [ ] SocialAccount 도메인 구현
-- [ ] OAuth2 Client 설정 (Google, GitHub)
-- [ ] 소셜 로그인 API 구현
-- [ ] 신규 사용자 추가 정보 입력 API 구현
-- [ ] 기존 회원 연동 처리
-- [ ] 단위 테스트 및 통합 테스트 통과
+- [x] SocialAccount 도메인 구현
+- [x] OAuth2 Client 설정 (Google, GitHub)
+- [x] 소셜 로그인 API 구현
+- [x] 랜덤 닉네임 자동 생성 ("사용자_" + UUID 8자리)
+- [x] 기존 회원 연동 처리
+- [x] 단위 테스트 통과
 
 ---
 
 ## 3. 관련 기능
 
 - 소셜 계정으로 로그인/회원가입
-- 신규 사용자 추가 정보 입력
+- 신규 사용자 랜덤 닉네임 자동 생성
 - 기존 이메일 계정과 소셜 계정 연동
 
 ---
@@ -32,7 +32,6 @@ Google, GitHub 소셜 로그인 기능을 구현합니다.
 | Method | Endpoint | 설명 |
 |--------|----------|------|
 | POST | `/api/v1/auth/oauth/{provider}` | 소셜 로그인 (Google/GitHub) |
-| PATCH | `/api/v1/auth/oauth/profile` | 추가 정보 입력 |
 
 ---
 
@@ -42,9 +41,12 @@ Google, GitHub 소셜 로그인 기능을 구현합니다.
 sw-campus-domain/
 └── src/main/java/com/swcampus/domain/
     └── oauth/
+        ├── OAuthClient.java (interface)        ← 인터페이스는 domain
+        ├── OAuthClientFactory.java (interface) ← 팩토리 인터페이스도 domain
         ├── OAuthService.java
         ├── OAuthProvider.java (enum)
         ├── OAuthUserInfo.java
+        ├── OAuthLoginResult.java
         ├── SocialAccount.java
         └── SocialAccountRepository.java
 
@@ -55,16 +57,18 @@ sw-campus-infra/db-postgres/
         ├── SocialAccountJpaRepository.java
         └── SocialAccountRepositoryImpl.java
 
+sw-campus-infra/oauth/                       ← OAuth Client 구현체는 infra
+└── src/main/java/com/swcampus/infra/oauth/
+    ├── GoogleOAuthClient.java
+    ├── GitHubOAuthClient.java
+    └── OAuthClientFactoryImpl.java  ← Factory 구현체
+
 sw-campus-api/
 └── src/main/java/com/swcampus/api/
-    └── oauth/
+    └── auth/
         ├── OAuthController.java
-        ├── OAuthClient.java
-        ├── GoogleOAuthClient.java
-        ├── GitHubOAuthClient.java
-        ├── request/
-        │   ├── OAuthCallbackRequest.java
-        │   └── OAuthProfileRequest.java
+        └── request/
+            └── OAuthCallbackRequest.java
         └── response/
             └── OAuthLoginResponse.java
 ```
@@ -102,15 +106,15 @@ class SocialAccountTest {
     @DisplayName("소셜 계정을 생성할 수 있다")
     void create() {
         // given
-        Long userId = 1L;
+        Long memberId = 1L;
         OAuthProvider provider = OAuthProvider.GOOGLE;
         String providerId = "google-user-id-123";
 
         // when
-        SocialAccount account = SocialAccount.create(userId, provider, providerId);
+        SocialAccount account = SocialAccount.create(memberId, provider, providerId);
 
         // then
-        assertThat(account.getUserId()).isEqualTo(userId);
+        assertThat(account.getMemberId()).isEqualTo(memberId);
         assertThat(account.getProvider()).isEqualTo(OAuthProvider.GOOGLE);
         assertThat(account.getProviderId()).isEqualTo(providerId);
     }
@@ -150,7 +154,7 @@ class OAuthServiceTest {
             .build();
 
         SocialAccount socialAccount = mock(SocialAccount.class);
-        when(socialAccount.getUserId()).thenReturn(1L);
+        when(socialAccount.getMemberId()).thenReturn(1L);
 
         Member member = mock(Member.class);
         when(member.getId()).thenReturn(1L);
@@ -169,7 +173,7 @@ class OAuthServiceTest {
         OAuthLoginResult result = oAuthService.loginOrRegister(userInfo);
 
         // then
-        assertThat(result.isNewUser()).isFalse();
+        assertThat(result.needsProfileCompletion()).isFalse();
         assertThat(result.getAccessToken()).isEqualTo("access-token");
     }
 
@@ -201,7 +205,7 @@ class OAuthServiceTest {
         OAuthLoginResult result = oAuthService.loginOrRegister(userInfo);
 
         // then
-        assertThat(result.isNewUser()).isTrue();  // 추가 정보 입력 필요
+        assertThat(result.needsProfileCompletion()).isTrue();  // 추가 정보 입력 필요
         verify(memberRepository).save(any(Member.class));
         verify(socialAccountRepository).save(any(SocialAccount.class));
     }
@@ -235,7 +239,7 @@ class OAuthServiceTest {
         OAuthLoginResult result = oAuthService.loginOrRegister(userInfo);
 
         // then
-        assertThat(result.isNewUser()).isFalse();  // 이미 프로필 있음
+        assertThat(result.needsProfileCompletion()).isFalse();  // 이미 프로필 있음
         verify(socialAccountRepository).save(any(SocialAccount.class));  // 소셜 연동
     }
 
@@ -243,16 +247,16 @@ class OAuthServiceTest {
     @DisplayName("추가 정보를 입력하여 프로필을 완성한다")
     void completeProfile() {
         // given
-        Long userId = 1L;
+        Long memberId = 1L;
         String nickname = "새닉네임";
         String phone = "010-1234-5678";
         String location = "서울시 강남구";
 
         Member member = mock(Member.class);
-        when(memberRepository.findById(userId)).thenReturn(Optional.of(member));
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
 
         // when
-        oAuthService.completeProfile(userId, nickname, phone, location);
+        oAuthService.completeProfile(memberId, nickname, phone, location);
 
         // then
         verify(member).updateProfile(nickname, phone, location);
@@ -322,9 +326,9 @@ class OAuthControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.userId").value(1))
+            .andExpect(jsonPath("$.memberId").value(1))
             .andExpect(jsonPath("$.email").value("user@gmail.com"))
-            .andExpect(jsonPath("$.isNewUser").value(false));
+            .andExpect(jsonPath("$.needsProfileCompletion").value(false));
     }
 
     @Test
@@ -334,7 +338,7 @@ class OAuthControllerTest {
         OAuthProfileRequest request = new OAuthProfileRequest("길동이", "010-1234-5678", "서울시 강남구");
 
         when(tokenProvider.validateToken("valid-token")).thenReturn(true);
-        when(tokenProvider.getUserId("valid-token")).thenReturn(1L);
+        when(tokenProvider.getMemberId("valid-token")).thenReturn(1L);
 
         Member member = mock(Member.class);
         when(member.getId()).thenReturn(1L);
@@ -384,14 +388,14 @@ public class OAuthUserInfo {
 @Getter
 public class SocialAccount {
     private Long id;
-    private Long userId;
+    private Long memberId;
     private OAuthProvider provider;
     private String providerId;
     private LocalDateTime createdAt;
 
-    public static SocialAccount create(Long userId, OAuthProvider provider, String providerId) {
+    public static SocialAccount create(Long memberId, OAuthProvider provider, String providerId) {
         SocialAccount account = new SocialAccount();
-        account.userId = userId;
+        account.memberId = memberId;
         account.provider = provider;
         account.providerId = providerId;
         account.createdAt = LocalDateTime.now();
@@ -405,7 +409,7 @@ public class SocialAccount {
 public interface SocialAccountRepository {
     SocialAccount save(SocialAccount socialAccount);
     Optional<SocialAccount> findByProviderAndProviderId(OAuthProvider provider, String providerId);
-    List<SocialAccount> findByUserId(Long userId);
+    List<SocialAccount> findByMemberId(Long memberId);
 }
 ```
 
@@ -417,7 +421,7 @@ public class OAuthLoginResult {
     private final String accessToken;
     private final String refreshToken;
     private final Member member;
-    private final boolean isNewUser;
+    private final boolean needsProfileCompletion;
 }
 ```
 
@@ -439,11 +443,11 @@ public class OAuthService {
             .findByProviderAndProviderId(userInfo.getProvider(), userInfo.getProviderId());
 
         Member member;
-        boolean isNewUser = false;
+        boolean needsProfileCompletion = false;
 
         if (existingSocialAccount.isPresent()) {
             // 기존 소셜 로그인 사용자
-            member = memberRepository.findById(existingSocialAccount.get().getUserId())
+            member = memberRepository.findById(existingSocialAccount.get().getMemberId())
                 .orElseThrow(() -> new IllegalStateException("사용자를 찾을 수 없습니다"));
         } else {
             // 이메일로 기존 회원 찾기
@@ -457,21 +461,21 @@ public class OAuthService {
                 // 신규 회원 생성
                 member = createOAuthMember(userInfo);
                 linkSocialAccount(member.getId(), userInfo);
-                isNewUser = true;
+                needsProfileCompletion = true;
             }
         }
 
         // 추가 정보 미입력 상태 확인
         if (member.getNickname() == null || member.getNickname().isBlank()) {
-            isNewUser = true;
+            needsProfileCompletion = true;
         }
 
         // 토큰 발급
-        return issueTokens(member, isNewUser);
+        return issueTokens(member, needsProfileCompletion);
     }
 
-    public Member completeProfile(Long userId, String nickname, String phone, String location) {
-        Member member = memberRepository.findById(userId)
+    public Member completeProfile(Long memberId, String nickname, String phone, String location) {
+        Member member = memberRepository.findById(memberId)
             .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다"));
 
         member.updateProfile(nickname, phone, location);
@@ -486,18 +490,18 @@ public class OAuthService {
         return memberRepository.save(member);
     }
 
-    private void linkSocialAccount(Long userId, OAuthUserInfo userInfo) {
+    private void linkSocialAccount(Long memberId, OAuthUserInfo userInfo) {
         SocialAccount socialAccount = SocialAccount.create(
-            userId,
+            memberId,
             userInfo.getProvider(),
             userInfo.getProviderId()
         );
         socialAccountRepository.save(socialAccount);
     }
 
-    private OAuthLoginResult issueTokens(Member member, boolean isNewUser) {
+    private OAuthLoginResult issueTokens(Member member, boolean needsProfileCompletion) {
         // 기존 RT 삭제
-        refreshTokenRepository.deleteByUserId(member.getId());
+        refreshTokenRepository.deleteByMemberId(member.getId());
 
         // 토큰 생성
         String accessToken = tokenProvider.createAccessToken(
@@ -512,7 +516,7 @@ public class OAuthService {
         );
         refreshTokenRepository.save(refreshTokenEntity);
 
-        return new OAuthLoginResult(accessToken, refreshToken, member, isNewUser);
+        return new OAuthLoginResult(accessToken, refreshToken, member, needsProfileCompletion);
     }
 }
 ```
@@ -543,15 +547,32 @@ public class Member {
 }
 ```
 
-**OAuthClient.java (Interface)**
+**OAuthClient.java (Interface) - domain 모듈**
 ```java
+package com.swcampus.domain.oauth;
+
 public interface OAuthClient {
     OAuthUserInfo getUserInfo(String code);
 }
 ```
 
-**GoogleOAuthClient.java**
+**GoogleOAuthClient.java - infra/oauth 모듈**
 ```java
+package com.swcampus.infra.oauth;
+
+import com.swcampus.domain.oauth.OAuthClient;
+import com.swcampus.domain.oauth.OAuthProvider;
+import com.swcampus.domain.oauth.OAuthUserInfo;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.Map;
+
 @Component
 @RequiredArgsConstructor
 public class GoogleOAuthClient implements OAuthClient {
@@ -618,8 +639,24 @@ public class GoogleOAuthClient implements OAuthClient {
 }
 ```
 
-**GitHubOAuthClient.java**
+**GitHubOAuthClient.java - infra/oauth 모듈**
 ```java
+package com.swcampus.infra.oauth;
+
+import com.swcampus.domain.oauth.OAuthClient;
+import com.swcampus.domain.oauth.OAuthProvider;
+import com.swcampus.domain.oauth.OAuthUserInfo;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.List;
+import java.util.Map;
+
 @Component
 @RequiredArgsConstructor
 public class GitHubOAuthClient implements OAuthClient {
@@ -700,8 +737,15 @@ public class GitHubOAuthClient implements OAuthClient {
 }
 ```
 
-**OAuthClientFactory.java**
+**OAuthClientFactory.java - infra/oauth 모듈**
 ```java
+package com.swcampus.infra.oauth;
+
+import com.swcampus.domain.oauth.OAuthClient;
+import com.swcampus.domain.oauth.OAuthProvider;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
 @Component
 @RequiredArgsConstructor
 public class OAuthClientFactory {
@@ -757,9 +801,9 @@ public class OAuthController {
             @CookieValue(name = "accessToken") String accessToken,
             @Valid @RequestBody OAuthProfileRequest request) {
 
-        Long userId = tokenProvider.getUserId(accessToken);
+        Long memberId = tokenProvider.getMemberId(accessToken);
         Member member = oAuthService.completeProfile(
-            userId, 
+            memberId, 
             request.getNickname(), 
             request.getPhone(), 
             request.getLocation()
@@ -800,11 +844,11 @@ public class OAuthProfileRequest {
 @Getter
 @AllArgsConstructor
 public class OAuthLoginResponse {
-    private Long userId;
+    private Long memberId;
     private String email;
     private String name;
     private String role;
-    private boolean isNewUser;
+    private boolean needsProfileCompletion;
 
     public static OAuthLoginResponse from(OAuthLoginResult result) {
         Member member = result.getMember();
@@ -813,7 +857,7 @@ public class OAuthLoginResponse {
             member.getEmail(),
             member.getName(),
             member.getRole().name(),
-            result.isNewUser()
+            result.needsProfileCompletion()
         );
     }
 }
@@ -822,7 +866,7 @@ public class OAuthLoginResponse {
 @Getter
 @AllArgsConstructor
 public class OAuthProfileResponse {
-    private Long userId;
+    private Long memberId;
     private String email;
     private String name;
     private String nickname;
@@ -870,16 +914,23 @@ curl -X PATCH http://localhost:8080/api/v1/auth/oauth/profile \
 
 | 파일 | 위치 | 설명 |
 |------|------|------|
+| `OAuthClient.java` | domain | OAuth 클라이언트 인터페이스 |
+| `OAuthClientFactory.java` | domain | OAuth 클라이언트 팩토리 인터페이스 |
 | `OAuthProvider.java` | domain | OAuth 제공자 enum |
 | `OAuthUserInfo.java` | domain | OAuth 사용자 정보 |
+| `OAuthLoginResult.java` | domain | 로그인 결과 (accessToken, refreshToken, member) |
 | `SocialAccount.java` | domain | 소셜 계정 도메인 |
 | `SocialAccountRepository.java` | domain | Repository 인터페이스 |
 | `OAuthService.java` | domain | OAuth 서비스 |
-| `OAuthLoginResult.java` | domain | 로그인 결과 |
-| `SocialAccountEntity.java` | infra | JPA Entity |
-| `GoogleOAuthClient.java` | api | Google OAuth 클라이언트 |
-| `GitHubOAuthClient.java` | api | GitHub OAuth 클라이언트 |
+| `SocialAccountEntity.java` | infra/db-postgres | JPA Entity |
+| `SocialAccountJpaRepository.java` | infra/db-postgres | JPA Repository |
+| `SocialAccountRepositoryImpl.java` | infra/db-postgres | Repository 구현체 |
+| `GoogleOAuthClient.java` | infra/oauth | Google OAuth 클라이언트 |
+| `GitHubOAuthClient.java` | infra/oauth | GitHub OAuth 클라이언트 |
+| `OAuthClientFactoryImpl.java` | infra/oauth | OAuth 클라이언트 팩토리 구현체 |
 | `OAuthController.java` | api | OAuth 컨트롤러 |
+| `OAuthCallbackRequest.java` | api | 콜백 요청 DTO |
+| `OAuthLoginResponse.java` | api | 로그인 응답 DTO (nickname 포함) |
 
 ---
 
