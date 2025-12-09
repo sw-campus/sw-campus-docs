@@ -95,33 +95,20 @@ export function Header() {
 
 shadcn/ui 기반 재사용 컴포넌트
 
-```typescript
-// src/components/ui/button.tsx
-import { cn } from '@/lib/utils';
-
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'outline' | 'ghost';
-}
-
-export function Button({ className, variant = 'default', ...props }: ButtonProps) {
-  return (
-    <button
-      className={cn(
-        'rounded-md px-4 py-2',
-        variant === 'default' && 'bg-primary text-primary-foreground',
-        variant === 'outline' && 'border border-input',
-        className
-      )}
-      {...props}
-    />
-  );
-}
+**컴포넌트 추가 방법:**
+```bash
+# shadcn/ui CLI로 컴포넌트 추가
+pnpm dlx shadcn@latest add button
+pnpm dlx shadcn@latest add input
+pnpm dlx shadcn@latest add card
+pnpm dlx shadcn@latest add sonner
 ```
 
 **규칙:**
-- ✅ UI 로직만 담당
-- ✅ 스타일은 Tailwind 기반
-- ✅ `cn()` 유틸리티로 클래스 병합
+- ✅ shadcn/ui CLI로 컴포넌트 추가
+- ✅ `src/components/ui/` 아래에 자동 생성됨
+- ✅ 생성된 코드는 수정하지 않고 그대로 사용
+- ❌ 직접 컴포넌트 코드 작성 금지
 - ❌ 비즈니스 로직 금지
 - ❌ API 호출 금지
 - ❌ 전역 상태 접근 금지
@@ -134,8 +121,8 @@ export function Button({ className, variant = 'default', ...props }: ButtonProps
 // src/features/cart/components/CartList.tsx
 "use client";
 
-import { useCartQuery } from '../hooks/useCartQuery';
-import { CartItem } from './CartItem';
+import { useCartQuery } from '@/features/cart/hooks/useCartQuery';
+import { CartItem } from '@/features/cart/components/CartItem';
 
 export function CartList() {
   const { data: cartItems, isLoading } = useCartQuery();
@@ -156,6 +143,7 @@ export function CartList() {
 - ✅ 도메인 로직 포함 가능
 - ✅ 도메인 훅 사용
 - ✅ 해당 feature 폴더 내에만 위치
+- ✅ import는 `@/` 절대경로 사용
 - ❌ 다른 feature 직접 import 지양
 
 ---
@@ -166,15 +154,22 @@ export function CartList() {
 
 ```typescript
 // src/app/layout.tsx
+import Footer from '@/components/layout/Footer';
+import Header from '@/components/layout/Header';
+import QueryClientProviderWrapper from '@/components/providers/query-client-provider';
+import { Toaster } from '@/components/ui/sonner';
+import FloatingCart from '@/features/cart/components/FloatingCart';
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <body className="bg-background text-foreground font-Pretendard">
+      <body className="relative flex min-h-screen flex-col">
         <QueryClientProviderWrapper>
           <Header />
-          <main>{children}</main>
+          {children}
           <Footer />
-          <Toaster />
+          <FloatingCart />
+          <Toaster richColors closeButton />
         </QueryClientProviderWrapper>
       </body>
     </html>
@@ -185,9 +180,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 **필수 순서:**
 1. `QueryClientProviderWrapper`
 2. `Header`
-3. `children`
+3. `{children}`
 4. `Footer`
-5. `Toaster`
+5. `FloatingCart` (전역 장바구니)
+6. `Toaster`
 
 ### 3.2 금지 사항
 

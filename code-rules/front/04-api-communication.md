@@ -261,18 +261,42 @@ export function useDeleteUser() {
 
 ```typescript
 // src/lib/env.ts
+
+// 필수 환경변수 검증 - 없으면 에러 발생
+const required = (value: string | undefined, key: string): string => {
+  if (!value) throw new Error(`Missing env: ${key}`)
+  return value
+}
+
+// 환경 판단
+const NODE_ENV = required(process.env.NODE_ENV, 'NODE_ENV')
+const isProd = NODE_ENV === 'production'
+const isLocal = NODE_ENV === 'development'
+
 export const env = {
-  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
-} as const;
+  NODE_ENV,
+  isProd,
+  isLocal,
+
+  NEXT_PUBLIC_API_URL: required(process.env.NEXT_PUBLIC_API_URL, 'NEXT_PUBLIC_API_URL'),
+}
 ```
 
 ```bash
 # .env.local
-NEXT_PUBLIC_API_URL=http://localhost:8080
+NODE_ENV=development
+NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
 
 # .env.production
-NEXT_PUBLIC_API_URL=https://api.production.com
+NODE_ENV=production
+NEXT_PUBLIC_API_URL=https://api.production.com/api/v1
 ```
+
+**규칙:**
+- ✅ 필수 환경변수는 `required()` 함수로 검증
+- ✅ `env.isProd`, `env.isLocal`로 환경 판단
+- ❌ 환경변수 직접 접근 금지 (`process.env.XXX`)
+- ❌ 기본값(`||`) 사용 금지 - 필수는 검증 필수
 
 ---
 

@@ -190,39 +190,9 @@ TailwindCSS 4에서는 **OKLCH** 색상 공간을 사용합니다:
 
 ---
 
-## 5. 다크 모드
+## 5. shadcn/ui 컴포넌트 스타일링
 
-### 5.1 설정
-
-```css
-/* globals.css */
-@custom-variant dark (&:is(.dark *));
-
-/* 다크 모드 색상 정의 */
-.dark {
-  --color-background: oklch(0.145 0 0);
-  --color-foreground: oklch(0.985 0 0);
-  /* ... 다른 다크 모드 색상 */
-}
-```
-
-### 5.2 사용
-
-```tsx
-// 다크 모드 클래스로 제어
-<html className="dark">
-  {/* 자동으로 다크 모드 색상 적용 */}
-</html>
-
-// 조건부 스타일
-<div className="bg-white dark:bg-gray-900">
-```
-
----
-
-## 6. shadcn/ui 컴포넌트 스타일링
-
-### 6.1 cn 유틸리티 사용
+### 5.1 cn 유틸리티 사용
 
 ```typescript
 // src/lib/utils.ts
@@ -234,7 +204,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 ```
 
-### 6.2 컴포넌트에서 사용
+### 5.2 컴포넌트에서 사용
 
 ```tsx
 // 기본 스타일 + 커스텀 스타일 병합
@@ -252,7 +222,7 @@ import { cn } from "@/lib/utils";
 
 ---
 
-## 7. 금지 사항 요약
+## 6. 금지 사항 요약
 
 | 금지 | 대안 |
 |------|------|
@@ -265,7 +235,7 @@ import { cn } from "@/lib/utils";
 
 ---
 
-## 8. 스타일링 체크리스트
+## 7. 스타일링 체크리스트
 
 ```
 □ 하드코딩 색상 없음 (bg-[#xxx], text-[#xxx])
