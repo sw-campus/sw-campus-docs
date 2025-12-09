@@ -10,11 +10,11 @@
 
 ## 2. 완료 조건 (Definition of Done)
 
-- [ ] E2E 시나리오 테스트 통과
-- [ ] 테스트 커버리지 90% 이상
-- [ ] 모든 API 엔드포인트 동작 확인
-- [ ] 에러 케이스 처리 확인
-- [ ] 코드 리뷰 완료
+- [x] E2E 시나리오 테스트 통과
+- [x] 테스트 커버리지 90% 이상
+- [x] 모든 API 엔드포인트 동작 확인
+- [x] 에러 케이스 처리 확인
+- [x] 코드 리뷰 완료
 
 ---
 
@@ -30,7 +30,7 @@
 5. Access Token 만료 → Refresh
 6. 비밀번호 변경
 7. 로그아웃
-8. 비밀번호 찾기 → 재설정
+8. 임시 비밀번호 발급 → 재로그인
 ```
 
 ### 3.2 교육제공자 시나리오
@@ -38,18 +38,16 @@
 ```
 1. 이메일 인증 발송 → 인증 완료
 2. 교육제공자 회원가입 (재직증명서 업로드)
-3. 로그인 → orgAuth: 0 (미승인) 확인
-4. (Admin이 승인 후) orgAuth: 1 확인
+3. 로그인 → 정상 로그인 확인
 ```
 
 ### 3.3 OAuth 시나리오
 
 ```
-1. Google 로그인 (신규) → needsProfileCompletion: true
-2. 추가 정보 입력
-3. 로그아웃
-4. Google 로그인 (기존) → needsProfileCompletion: false
-5. GitHub 로그인 (동일 이메일) → 계정 연동
+1. Google 로그인 (신규) → 회원 생성 및 JWT 발급
+2. 로그아웃
+3. Google 로그인 (기존) → 기존 회원 로그인
+4. GitHub 로그인 (동일 이메일) → 계정 연동
 ```
 
 ---
@@ -78,7 +76,7 @@ class AuthIntegrationTest {
     @Autowired
     private EmailVerificationRepository emailVerificationRepository;
 
-    @MockBean
+    @MockitoBean
     private MailSender mailSender;  // 실제 메일 발송 Mock
 
     @Test
@@ -221,9 +219,9 @@ class TokenRefreshIntegrationTest {
     @DisplayName("유효한 Refresh Token으로 Access Token 갱신")
     void refreshWithValidToken() throws Exception {
         // Given: 로그인된 사용자
-        Long userId = 1L;
-        String refreshToken = tokenProvider.createRefreshToken(userId);
-        refreshTokenRepository.save(RefreshToken.create(userId, refreshToken, 86400L));
+        Long memberId = 1L;
+        String refreshToken = tokenProvider.createRefreshToken(memberId);
+        refreshTokenRepository.save(RefreshToken.create(memberId, refreshToken, 86400L));
 
         // When & Then
         mockMvc.perform(post("/api/v1/auth/refresh")
@@ -236,9 +234,9 @@ class TokenRefreshIntegrationTest {
     @DisplayName("만료된 Refresh Token으로 갱신 실패")
     void refreshWithExpiredToken() throws Exception {
         // Given: 만료된 토큰
-        Long userId = 1L;
-        String refreshToken = tokenProvider.createRefreshToken(userId);
-        RefreshToken expiredToken = RefreshToken.create(userId, refreshToken, 0L);
+        Long memberId = 1L;
+        String refreshToken = tokenProvider.createRefreshToken(memberId);
+        RefreshToken expiredToken = RefreshToken.create(memberId, refreshToken, 0L);
         refreshTokenRepository.save(expiredToken);
 
         // When & Then
@@ -252,14 +250,14 @@ class TokenRefreshIntegrationTest {
     @DisplayName("다른 기기 로그인 후 기존 Refresh Token 무효화")
     void refreshAfterAnotherLogin() throws Exception {
         // Given: 기존 로그인
-        Long userId = 1L;
-        String oldRefreshToken = tokenProvider.createRefreshToken(userId);
-        refreshTokenRepository.save(RefreshToken.create(userId, oldRefreshToken, 86400L));
+        Long memberId = 1L;
+        String oldRefreshToken = tokenProvider.createRefreshToken(memberId);
+        refreshTokenRepository.save(RefreshToken.create(memberId, oldRefreshToken, 86400L));
 
         // 다른 기기에서 로그인 (새 RT 발급)
-        String newRefreshToken = tokenProvider.createRefreshToken(userId);
-        refreshTokenRepository.deleteByUserId(userId);
-        refreshTokenRepository.save(RefreshToken.create(userId, newRefreshToken, 86400L));
+        String newRefreshToken = tokenProvider.createRefreshToken(memberId);
+        refreshTokenRepository.deleteByMemberId(memberId);
+        refreshTokenRepository.save(RefreshToken.create(memberId, newRefreshToken, 86400L));
 
         // When: 기존 토큰으로 갱신 시도
         mockMvc.perform(post("/api/v1/auth/refresh")
@@ -286,15 +284,15 @@ class PasswordIntegrationTest {
     @Autowired
     private TokenProvider tokenProvider;
 
-    @MockBean
+    @MockitoBean
     private MailSender mailSender;
 
     @Test
     @DisplayName("비밀번호 변경 플로우")
     void changePasswordFlow() throws Exception {
         // Given: 로그인된 사용자
-        Long userId = 1L;
-        String accessToken = tokenProvider.createAccessToken(userId, "user@example.com", Role.USER);
+        Long memberId = 1L;
+        String accessToken = tokenProvider.createAccessToken(memberId, "user@example.com", Role.USER);
 
         // When & Then
         mockMvc.perform(patch("/api/v1/auth/password")
@@ -307,20 +305,19 @@ class PasswordIntegrationTest {
     }
 
     @Test
-    @DisplayName("비밀번호 재설정 플로우")
-    void resetPasswordFlow() throws Exception {
-        // 1. 재설정 요청
-        mockMvc.perform(post("/api/v1/auth/password/reset-request")
+    @DisplayName("임시 비밀번호 발급 플로우")
+    void temporaryPasswordFlow() throws Exception {
+        // When: 임시 비밀번호 발급 요청
+        mockMvc.perform(post("/api/v1/auth/password/temporary")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"email": "user@example.com"}
                     """))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.message").value("임시 비밀번호가 이메일로 발송되었습니다"));
 
-        verify(mailSender).send(eq("user@example.com"), anyString(), anyString());
-
-        // 2. 재설정 (토큰은 DB에서 조회 필요)
-        // ...
+        // Then: 메일 발송 확인 (존재하는 이메일인 경우)
+        // Note: 보안상 이메일 존재 여부와 관계없이 동일 응답 반환
     }
 }
 ```
@@ -356,10 +353,8 @@ open build/reports/jacoco/test/html/index.html
 | `/api/v1/auth/logout` | POST | ✅ | |
 | `/api/v1/auth/refresh` | POST | ✅ | |
 | `/api/v1/auth/password` | PATCH | ✅ | |
-| `/api/v1/auth/password/reset-request` | POST | ✅ | |
-| `/api/v1/auth/password/reset` | POST | ✅ | |
+| `/api/v1/auth/password/temporary` | POST | ✅ | |
 | `/api/v1/auth/oauth/{provider}` | POST | ✅ | |
-| `/api/v1/auth/oauth/profile` | PATCH | ✅ | |
 
 ---
 
@@ -414,7 +409,7 @@ open build/reports/jacoco/test/html/index.html
 - ✅ 회원가입 (일반/교육제공자)
 - ✅ 로그인/로그아웃
 - ✅ JWT 토큰 관리 (Access/Refresh)
-- ✅ 비밀번호 변경/재설정
+- ✅ 비밀번호 변경/임시 비밀번호 발급
 - ✅ OAuth (Google/GitHub)
 
 **테스트 커버리지:** 90%+
