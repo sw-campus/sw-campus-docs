@@ -1,5 +1,38 @@
 # 강의 후기 Sequence Diagrams
 
+## 0. 닉네임 확인 (후기 작성 진입 시)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant User as 사용자
+    participant Frontend as 프론트엔드<br/>(Next.js)
+    participant Backend as 백엔드<br/>(Spring)
+    participant DB as Database
+
+    User->>Frontend: 후기 작성 버튼 클릭
+    
+    Note over Frontend: JWT 토큰에서<br/>hasNickname 플래그 확인
+
+    alt 닉네임 미설정 (hasNickname: false)
+        Frontend->>User: 닉네임 설정 필요 안내<br/>(회원 상세 페이지로 이동 유도)
+        User->>Frontend: 회원 상세 페이지로 이동
+        User->>Frontend: 닉네임 입력
+        Frontend->>Backend: PATCH /api/members/me/nickname<br/>{nickname: "새닉네임"}
+        Backend->>DB: 닉네임 업데이트
+        DB-->>Backend: 업데이트 완료
+        Backend-->>Frontend: 200 OK<br/>+ 새 토큰 발급 (hasNickname: true)
+        
+        Note over Frontend: 새 토큰 저장
+        
+        Frontend-->>User: 닉네임 설정 완료<br/>후기 작성 페이지로 이동
+    else 닉네임 이미 설정됨 (hasNickname: true)
+        Note over Frontend: 수료증 인증 흐름으로 진행
+    end
+```
+
+---
+
 ## 1. 수료증 인증
 
 ```mermaid
@@ -111,25 +144,10 @@ sequenceDiagram
 
 ---
 
-## 4. 후기 삭제
+## 4. 사용자 후기 삭제
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant User as 사용자
-    participant Frontend as 프론트엔드<br/>(Next.js)
-    participant Backend as 백엔드<br/>(Spring)
-    participant DB as Database
-
-    User->>Frontend: 후기 삭제 버튼 클릭
-    Frontend->>User: 삭제 확인 모달 표시
-    User->>Frontend: 삭제 확인
-    Frontend->>Backend: DELETE /api/reviews/{reviewId}
-    Backend->>DB: 후기 삭제
-    DB-->>Backend: 삭제 완료
-    Backend-->>Frontend: 204 No Content
-    Frontend-->>User: 성공 메시지 표시<br/>목록 새로고침
-```
+> **Note**: 사용자는 후기를 삭제할 수 없습니다. 수정만 가능합니다.
+> 데이터 삭제는 관리자의 블라인드(BLURRED) 처리로 대체됩니다.
 
 ---
 
@@ -145,9 +163,21 @@ sequenceDiagram
     participant OCR as OCR 서버
     participant DB as Database
 
+    rect rgb(240, 240, 200)
+        Note over User, DB: 0. 닉네임 확인
+        User->>Frontend: 후기 작성 버튼 클릭
+        Note over Frontend: JWT hasNickname 확인
+        alt hasNickname: false
+            Frontend->>User: 닉네임 설정 페이지로 이동
+            User->>Frontend: 닉네임 입력
+            Frontend->>Backend: PATCH /api/members/me/nickname
+            Backend->>DB: 닉네임 업데이트
+            Backend-->>Frontend: 200 OK + 새 토큰 발급
+        end
+    end
+
     rect rgb(255, 230, 200)
         Note over User, DB: 1. 수료증 인증
-        User->>Frontend: 후기 작성 버튼 클릭
         Frontend->>Backend: 수료증 인증 확인
         Backend->>DB: 인증 여부 조회
         DB-->>Backend: 미인증
@@ -165,9 +195,9 @@ sequenceDiagram
     rect rgb(200, 230, 200)
         Note over User, DB: 2. 후기 작성
         Frontend-->>User: 후기 작성 폼 표시
-        User->>Frontend: 후기 내용 제출
+        User->>Frontend: 후기 내용 제출<br/>(전체별점, 상세별점 5개, 내용)
         Frontend->>Backend: POST /api/reviews
-        Backend->>DB: 후기 저장
+        Backend->>DB: 후기 저장 (PENDING)
         Backend-->>Frontend: 201 Created
         Frontend-->>User: 작성 완료
     end
@@ -184,12 +214,5 @@ sequenceDiagram
         Backend-->>Frontend: 200 OK
     end
 
-    rect rgb(240, 200, 200)
-        Note over User, DB: 4. 후기 삭제
-        User->>Frontend: 삭제 버튼 클릭
-        Frontend->>User: 삭제 확인
-        Frontend->>Backend: DELETE /api/reviews/{id}
-        Backend->>DB: 삭제
-        Backend-->>Frontend: 204 No Content
-    end
+    Note over User, DB: ※ 사용자는 후기를 삭제할 수 없습니다.<br/>삭제는 관리자 블라인드 처리로 대체됩니다.
 ```
