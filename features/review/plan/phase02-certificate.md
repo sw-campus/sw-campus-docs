@@ -191,19 +191,19 @@ public class CertificateService {
     /**
      * 수료증 인증 여부 확인
      */
-    public Optional<Certificate> checkCertificate(Long userId, Long lectureId) {
-        return certificateRepository.findByUserIdAndLectureId(userId, lectureId);
+    public Optional<Certificate> checkCertificate(Long memberId, Long lectureId) {
+        return certificateRepository.findByMemberIdAndLectureId(memberId, lectureId);
     }
 
     /**
      * 수료증 인증 처리
      */
     @Transactional
-    public Certificate verifyCertificate(Long userId, Long lectureId, 
+    public Certificate verifyCertificate(Long memberId, Long lectureId, 
                                           byte[] imageBytes, String fileName, 
                                           String contentType) {
         // 1. 이미 인증했는지 확인
-        if (certificateRepository.existsByUserIdAndLectureId(userId, lectureId)) {
+        if (certificateRepository.existsByMemberIdAndLectureId(memberId, lectureId)) {
             throw new CertificateAlreadyVerifiedException();
         }
 
@@ -224,7 +224,7 @@ public class CertificateService {
         String imageUrl = fileStorageService.upload(imageBytes, fileName, contentType);
 
         // 6. 수료증 저장 (OCR 검증 성공 시 status = "SUCCESS")
-        Certificate certificate = Certificate.create(userId, lectureId, imageUrl, "SUCCESS");
+        Certificate certificate = Certificate.create(memberId, lectureId, imageUrl, "SUCCESS");
         return certificateRepository.save(certificate);
     }
 
@@ -347,10 +347,10 @@ public class CertificateController {
     @Operation(summary = "수료증 인증 여부 확인")
     @GetMapping("/check")
     public ResponseEntity<CertificateCheckResponse> checkCertificate(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal Long memberId,
             @RequestParam Long lectureId) {
 
-        return certificateService.checkCertificate(userId, lectureId)
+        return certificateService.checkCertificate(memberId, lectureId)
                 .map(cert -> ResponseEntity.ok(CertificateCheckResponse.certified(
                         cert.getCertificateId(),
                         cert.getImageUrl(),
@@ -363,12 +363,12 @@ public class CertificateController {
     @Operation(summary = "수료증 인증 (이미지 업로드 + OCR 검증)")
     @PostMapping(value = "/verify", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CertificateVerifyResponse> verifyCertificate(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal Long memberId,
             @RequestParam Long lectureId,
             @RequestPart MultipartFile image) throws IOException {
 
         Certificate certificate = certificateService.verifyCertificate(
-                userId,
+                memberId,
                 lectureId,
                 image.getBytes(),
                 image.getOriginalFilename(),

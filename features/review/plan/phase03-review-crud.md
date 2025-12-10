@@ -46,9 +46,9 @@ public class ReviewService {
     /**
      * 후기 작성 가능 여부 확인
      */
-    public ReviewEligibility checkEligibility(Long userId, Long lectureId) {
+    public ReviewEligibility checkEligibility(Long memberId, Long lectureId) {
         // 1. 회원 정보 확인
-        Member member = memberRepository.findById(userId)
+        Member member = memberRepository.findById(memberId)
                 .orElseThrow(MemberNotFoundException::new);
 
         // 2. 닉네임 설정 여부
@@ -57,11 +57,11 @@ public class ReviewService {
 
         // 3. 수료증 인증 여부
         Optional<Certificate> certificate = certificateRepository
-                .findByUserIdAndLectureId(userId, lectureId);
+                .findByMemberIdAndLectureId(memberId, lectureId);
         boolean hasCertificate = certificate.isPresent();
 
         // 4. 기존 후기 존재 여부
-        boolean hasReview = reviewRepository.existsByUserIdAndLectureId(userId, lectureId);
+        boolean hasReview = reviewRepository.existsByMemberIdAndLectureId(memberId, lectureId);
 
         return new ReviewEligibility(
                 hasNickname,
@@ -75,21 +75,21 @@ public class ReviewService {
      * 후기 작성
      */
     @Transactional
-    public Review createReview(Long userId, Long lectureId, 
+    public Review createReview(Long memberId, Long lectureId, 
                                 String comment, List<ReviewDetail> details) {
         // 1. 수료증 인증 확인
         Certificate certificate = certificateRepository
-                .findByUserIdAndLectureId(userId, lectureId)
+                .findByMemberIdAndLectureId(memberId, lectureId)
                 .orElseThrow(CertificateNotVerifiedException::new);
 
         // 2. 중복 후기 확인
-        if (reviewRepository.existsByUserIdAndLectureId(userId, lectureId)) {
+        if (reviewRepository.existsByMemberIdAndLectureId(memberId, lectureId)) {
             throw new ReviewAlreadyExistsException();
         }
 
         // 3. 후기 생성
         Review review = Review.create(
-                userId, 
+                memberId, 
                 lectureId, 
                 certificate.getCertificateId(), 
                 comment, 
@@ -103,14 +103,14 @@ public class ReviewService {
      * 후기 수정
      */
     @Transactional
-    public Review updateReview(Long userId, Long reviewId, 
+    public Review updateReview(Long memberId, Long reviewId, 
                                 String comment, List<ReviewDetail> details) {
         // 1. 후기 조회
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(ReviewNotFoundException::new);
 
         // 2. 작성자 확인
-        if (!review.getUserId().equals(userId)) {
+        if (!review.getMemberId().equals(memberId)) {
             throw new ReviewNotOwnerException();
         }
 
@@ -295,7 +295,7 @@ public record ReviewResponse(
     Long reviewId,
     Long lectureId,
     String lectureName,
-    Long userId,
+    Long memberId,
     String nickname,
     String comment,    // 총평 (nullable)
     Double score,
@@ -358,10 +358,10 @@ public class ReviewController {
     @SecurityRequirement(name = "cookieAuth")
     @GetMapping("/eligibility")
     public ResponseEntity<ReviewEligibilityResponse> checkEligibility(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal Long memberId,
             @RequestParam Long lectureId) {
 
-        ReviewEligibility eligibility = reviewService.checkEligibility(userId, lectureId);
+        ReviewEligibility eligibility = reviewService.checkEligibility(memberId, lectureId);
 
         return ResponseEntity.ok(ReviewEligibilityResponse.from(
                 eligibility.hasNickname(),
@@ -375,7 +375,7 @@ public class ReviewController {
     @SecurityRequirement(name = "cookieAuth")
     @PostMapping
     public ResponseEntity<ReviewResponse> createReview(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal Long memberId,
             @Valid @RequestBody CreateReviewRequest request) {
 
         List<ReviewDetail> details = request.detailScores().stream()
@@ -387,7 +387,7 @@ public class ReviewController {
                 .collect(Collectors.toList());
 
         Review review = reviewService.createReview(
-                userId,
+                memberId,
                 request.lectureId(),
                 request.comment(),
                 details
@@ -401,7 +401,7 @@ public class ReviewController {
     @SecurityRequirement(name = "cookieAuth")
     @PutMapping("/{reviewId}")
     public ResponseEntity<ReviewResponse> updateReview(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal Long memberId,
             @PathVariable Long reviewId,
             @Valid @RequestBody UpdateReviewRequest request) {
 
@@ -414,7 +414,7 @@ public class ReviewController {
                 .collect(Collectors.toList());
 
         Review review = reviewService.updateReview(
-                userId,
+                memberId,
                 reviewId,
                 request.comment(),
                 details
@@ -443,7 +443,7 @@ public class ReviewController {
                 review.getReviewId(),
                 review.getLectureId(),
                 null, // lectureName은 별도 조회 필요
-                review.getUserId(),
+                review.getMemberId(),
                 null, // nickname은 별도 조회 필요
                 review.getComment(),
                 review.getScore(),
@@ -469,7 +469,7 @@ public class ReviewController {
 #### 현재 구현 방식 (DB 조회)
 ```java
 // ReviewService.checkEligibility() 내부
-Member member = memberRepository.findById(userId)
+Member member = memberRepository.findById(memberId)
         .orElseThrow(MemberNotFoundException::new);
 
 boolean hasNickname = member.getNickname() != null && 

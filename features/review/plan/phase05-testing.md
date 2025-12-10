@@ -213,7 +213,7 @@ class CertificateServiceTest {
     @DisplayName("이미 인증된 수료증이 있으면 예외 발생")
     void verifyCertificate_alreadyVerified_throwsException() {
         // given
-        given(certificateRepository.existsByUserIdAndLectureId(1L, 1L))
+        given(certificateRepository.existsByMemberIdAndLectureId(1L, 1L))
                 .willReturn(true);
 
         // when & then
@@ -226,7 +226,7 @@ class CertificateServiceTest {
     @DisplayName("OCR 결과에 강의명이 포함되지 않으면 예외 발생")
     void verifyCertificate_lectureMismatch_throwsException() {
         // given
-        given(certificateRepository.existsByUserIdAndLectureId(1L, 1L))
+        given(certificateRepository.existsByMemberIdAndLectureId(1L, 1L))
                 .willReturn(false);
         
         Lecture lecture = createLecture("Java 풀스택 개발자 과정");
@@ -246,7 +246,7 @@ class CertificateServiceTest {
     @DisplayName("유연한 매칭: 공백이 다르더라도 강의명 인식 성공")
     void verifyCertificate_flexibleMatching_success() {
         // given
-        given(certificateRepository.existsByUserIdAndLectureId(1L, 1L))
+        given(certificateRepository.existsByMemberIdAndLectureId(1L, 1L))
                 .willReturn(false);
         
         Lecture lecture = createLecture("Java 풀스택 개발자 과정");
@@ -327,7 +327,7 @@ class ReviewServiceTest {
     @DisplayName("수료증 없이 후기 작성 시 예외 발생")
     void createReview_noCertificate_throwsException() {
         // given
-        given(certificateRepository.findByUserIdAndLectureId(1L, 1L))
+        given(certificateRepository.findByMemberIdAndLectureId(1L, 1L))
                 .willReturn(Optional.empty());
 
         // when & then
@@ -341,10 +341,10 @@ class ReviewServiceTest {
     void createReview_alreadyExists_throwsException() {
         // given
         Certificate certificate = Certificate.create(1L, 1L, "https://s3.../image.jpg", "SUCCESS");
-        given(certificateRepository.findByUserIdAndLectureId(1L, 1L))
+        given(certificateRepository.findByMemberIdAndLectureId(1L, 1L))
                 .willReturn(Optional.of(certificate));
         
-        given(reviewRepository.existsByUserIdAndLectureId(1L, 1L))
+        given(reviewRepository.existsByMemberIdAndLectureId(1L, 1L))
                 .willReturn(true);
 
         // when & then
@@ -362,10 +362,10 @@ class ReviewServiceTest {
                 .willReturn(Optional.of(member));
         
         Certificate certificate = Certificate.create(1L, 1L, "https://s3.../image.jpg", "SUCCESS");
-        given(certificateRepository.findByUserIdAndLectureId(1L, 1L))
+        given(certificateRepository.findByMemberIdAndLectureId(1L, 1L))
                 .willReturn(Optional.of(certificate));
         
-        given(reviewRepository.existsByUserIdAndLectureId(1L, 1L))
+        given(reviewRepository.existsByMemberIdAndLectureId(1L, 1L))
                 .willReturn(false);
 
         // when

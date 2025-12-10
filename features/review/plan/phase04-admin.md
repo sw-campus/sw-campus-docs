@@ -83,7 +83,7 @@ public class AdminReviewService {
         Certificate saved = certificateRepository.save(certificate);
 
         // 반려 이메일 발송
-        Member member = memberRepository.findById(certificate.getUserId())
+        Member member = memberRepository.findById(certificate.getMemberId())
                 .orElse(null);
         if (member != null) {
             emailService.sendCertificateRejectionEmail(member.getEmail());
@@ -126,7 +126,7 @@ public class AdminReviewService {
         Review saved = reviewRepository.save(review);
 
         // 반려 이메일 발송
-        Member member = memberRepository.findById(review.getUserId())
+        Member member = memberRepository.findById(review.getMemberId())
                 .orElse(null);
         if (member != null) {
             emailService.sendReviewRejectionEmail(member.getEmail());
@@ -282,7 +282,7 @@ public record AdminReviewListResponse(
         Long reviewId,
         Long lectureId,
         String lectureName,
-        Long userId,
+        Long memberId,
         String userName,
         String nickname,
         Double score,
@@ -317,7 +317,7 @@ public record AdminReviewDetailResponse(
     Long reviewId,
     Long lectureId,
     String lectureName,
-    Long userId,
+    Long memberId,
     String userName,
     String nickname,
     String comment,
@@ -522,7 +522,7 @@ public class AdminReviewController {
                 .map(Lecture::getName)
                 .orElse("알 수 없음");
 
-        Member member = memberRepository.findById(review.getUserId()).orElse(null);
+        Member member = memberRepository.findById(review.getMemberId()).orElse(null);
         String userName = member != null ? member.getName() : "알 수 없음";
         String nickname = member != null ? member.getNickname() : "알 수 없음";
 
@@ -533,7 +533,7 @@ public class AdminReviewController {
                 review.getReviewId(),
                 review.getLectureId(),
                 lectureName,
-                review.getUserId(),
+                review.getMemberId(),
                 userName,
                 nickname,
                 review.getScore(),
@@ -548,7 +548,7 @@ public class AdminReviewController {
                 .map(Lecture::getName)
                 .orElse("알 수 없음");
 
-        Member member = memberRepository.findById(review.getUserId()).orElse(null);
+        Member member = memberRepository.findById(review.getMemberId()).orElse(null);
         String userName = member != null ? member.getName() : "알 수 없음";
         String nickname = member != null ? member.getNickname() : "알 수 없음";
 
@@ -562,7 +562,7 @@ public class AdminReviewController {
                 review.getReviewId(),
                 review.getLectureId(),
                 lectureName,
-                review.getUserId(),
+                review.getMemberId(),
                 userName,
                 nickname,
                 review.getComment(),

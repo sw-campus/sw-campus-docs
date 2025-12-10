@@ -75,16 +75,16 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Certificate {
     private Long certificateId;
-    private Long userId;
+    private Long memberId;
     private Long lectureId;
     private String imageUrl;
     private String status;  // OCR 인증 결과 ("SUCCESS", "FAIL" 등)
     private ApprovalStatus approvalStatus;  // 관리자 승인 상태
     private LocalDateTime createdAt;
 
-    public static Certificate create(Long userId, Long lectureId, String imageUrl, String status) {
+    public static Certificate create(Long memberId, Long lectureId, String imageUrl, String status) {
         Certificate certificate = new Certificate();
-        certificate.userId = userId;
+        certificate.memberId = memberId;
         certificate.lectureId = lectureId;
         certificate.imageUrl = imageUrl;
         certificate.status = status;
@@ -92,12 +92,12 @@ public class Certificate {
         return certificate;
     }
 
-    public static Certificate of(Long certificateId, Long userId, Long lectureId, 
+    public static Certificate of(Long certificateId, Long memberId, Long lectureId, 
                                   String imageUrl, String status,
                                   ApprovalStatus approvalStatus, LocalDateTime createdAt) {
         Certificate certificate = new Certificate();
         certificate.certificateId = certificateId;
-        certificate.userId = userId;
+        certificate.memberId = memberId;
         certificate.lectureId = lectureId;
         certificate.imageUrl = imageUrl;
         certificate.status = status;
@@ -178,7 +178,7 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Review {
     private Long reviewId;
-    private Long userId;
+    private Long memberId;
     private Long lectureId;
     private Long certificateId;
     private String comment;           // 총평 (optional, max 500자)
@@ -189,10 +189,10 @@ public class Review {
     private LocalDateTime updatedAt;
     private List<ReviewDetail> details = new ArrayList<>();
 
-    public static Review create(Long userId, Long lectureId, Long certificateId,
+    public static Review create(Long memberId, Long lectureId, Long certificateId,
                                  String comment, List<ReviewDetail> details) {
         Review review = new Review();
-        review.userId = userId;
+        review.memberId = memberId;
         review.lectureId = lectureId;
         review.certificateId = certificateId;
         review.comment = comment;
@@ -205,13 +205,13 @@ public class Review {
         return review;
     }
 
-    public static Review of(Long reviewId, Long userId, Long lectureId, Long certificateId,
+    public static Review of(Long reviewId, Long memberId, Long lectureId, Long certificateId,
                             String comment, Double score, ApprovalStatus approvalStatus,
                             boolean blurred, LocalDateTime createdAt, LocalDateTime updatedAt,
                             List<ReviewDetail> details) {
         Review review = new Review();
         review.reviewId = reviewId;
-        review.userId = userId;
+        review.memberId = memberId;
         review.lectureId = lectureId;
         review.certificateId = certificateId;
         review.comment = comment;
@@ -278,8 +278,8 @@ import java.util.Optional;
 public interface CertificateRepository {
     Certificate save(Certificate certificate);
     Optional<Certificate> findById(Long certificateId);
-    Optional<Certificate> findByUserIdAndLectureId(Long userId, Long lectureId);
-    boolean existsByUserIdAndLectureId(Long userId, Long lectureId);
+    Optional<Certificate> findByMemberIdAndLectureId(Long memberId, Long lectureId);
+    boolean existsByMemberIdAndLectureId(Long memberId, Long lectureId);
 }
 ```
 
@@ -293,8 +293,8 @@ import java.util.Optional;
 public interface ReviewRepository {
     Review save(Review review);
     Optional<Review> findById(Long reviewId);
-    Optional<Review> findByUserIdAndLectureId(Long userId, Long lectureId);
-    boolean existsByUserIdAndLectureId(Long userId, Long lectureId);
+    Optional<Review> findByMemberIdAndLectureId(Long memberId, Long lectureId);
+    boolean existsByMemberIdAndLectureId(Long memberId, Long lectureId);
     List<Review> findByLectureIdAndApprovalStatus(Long lectureId, ApprovalStatus status);
     List<Review> findByApprovalStatus(ApprovalStatus status);
     List<Review> findPendingReviews(); // 수료증 또는 후기가 PENDING
@@ -412,7 +412,7 @@ public class CertificateEntity {
     private Long certificateId;
 
     @Column(name = "USER_ID", nullable = false)
-    private Long userId;
+    private Long memberId;
 
     @Column(name = "LECTURE_ID", nullable = false)
     private Long lectureId;
@@ -430,11 +430,11 @@ public class CertificateEntity {
     @Column(name = "CREATED_AT")
     private LocalDateTime createdAt;  // 신규: 인증 일시
 
-    public static CertificateEntity of(Long userId, Long lectureId, 
+    public static CertificateEntity of(Long memberId, Long lectureId, 
                                         String imageUrl, String status,
                                         Integer approvalStatus) {
         CertificateEntity entity = new CertificateEntity();
-        entity.userId = userId;
+        entity.memberId = memberId;
         entity.lectureId = lectureId;
         entity.imageUrl = imageUrl;
         entity.status = status;
@@ -478,7 +478,7 @@ public class ReviewEntity {
     private Long lectureId;
 
     @Column(name = "USER_ID", nullable = false)
-    private Long userId;
+    private Long memberId;
 
     @Column(name = "CERTIFICATE_ID")  // 신규: 수료증 연결
     private Long certificateId;
@@ -506,11 +506,11 @@ public class ReviewEntity {
     @OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ReviewDetailEntity> details = new ArrayList<>();
 
-    public static ReviewEntity of(Long userId, Long lectureId, Long certificateId,
+    public static ReviewEntity of(Long memberId, Long lectureId, Long certificateId,
                                    String comment, Double score, Integer approvalStatus,
                                    Boolean blurred) {
         ReviewEntity entity = new ReviewEntity();
-        entity.userId = userId;
+        entity.memberId = memberId;
         entity.lectureId = lectureId;
         entity.certificateId = certificateId;
         entity.comment = comment;
@@ -600,8 +600,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
 public interface CertificateJpaRepository extends JpaRepository<CertificateEntity, Long> {
-    Optional<CertificateEntity> findByUserIdAndLectureId(Long userId, Long lectureId);
-    boolean existsByUserIdAndLectureId(Long userId, Long lectureId);
+    Optional<CertificateEntity> findByMemberIdAndLectureId(Long memberId, Long lectureId);
+    boolean existsByMemberIdAndLectureId(Long memberId, Long lectureId);
 }
 ```
 
@@ -617,8 +617,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ReviewJpaRepository extends JpaRepository<ReviewEntity, Long> {
-    Optional<ReviewEntity> findByUserIdAndLectureId(Long userId, Long lectureId);
-    boolean existsByUserIdAndLectureId(Long userId, Long lectureId);
+    Optional<ReviewEntity> findByMemberIdAndLectureId(Long memberId, Long lectureId);
+    boolean existsByMemberIdAndLectureId(Long memberId, Long lectureId);
     List<ReviewEntity> findByLectureIdAndApprovalStatus(Long lectureId, Integer approvalStatus);
     List<ReviewEntity> findByApprovalStatus(Integer approvalStatus);
     
@@ -676,19 +676,19 @@ public class CertificateEntityRepository implements CertificateRepository {
     }
 
     @Override
-    public Optional<Certificate> findByUserIdAndLectureId(Long userId, Long lectureId) {
-        return jpaRepository.findByUserIdAndLectureId(userId, lectureId)
+    public Optional<Certificate> findByMemberIdAndLectureId(Long memberId, Long lectureId) {
+        return jpaRepository.findByMemberIdAndLectureId(memberId, lectureId)
                 .map(this::toDomain);
     }
 
     @Override
-    public boolean existsByUserIdAndLectureId(Long userId, Long lectureId) {
-        return jpaRepository.existsByUserIdAndLectureId(userId, lectureId);
+    public boolean existsByMemberIdAndLectureId(Long memberId, Long lectureId) {
+        return jpaRepository.existsByMemberIdAndLectureId(memberId, lectureId);
     }
 
     private CertificateEntity toEntity(Certificate domain) {
         return CertificateEntity.of(
-                domain.getUserId(),
+                domain.getMemberId(),
                 domain.getLectureId(),
                 domain.getImageUrl(),
                 domain.getStatus(),
@@ -699,7 +699,7 @@ public class CertificateEntityRepository implements CertificateRepository {
     private Certificate toDomain(CertificateEntity entity) {
         return Certificate.of(
                 entity.getCertificateId(),
-                entity.getUserId(),
+                entity.getMemberId(),
                 entity.getLectureId(),
                 entity.getImageUrl(),
                 entity.getStatus(),
@@ -753,14 +753,14 @@ public class ReviewEntityRepository implements ReviewRepository {
     }
 
     @Override
-    public Optional<Review> findByUserIdAndLectureId(Long userId, Long lectureId) {
-        return jpaRepository.findByUserIdAndLectureId(userId, lectureId)
+    public Optional<Review> findByMemberIdAndLectureId(Long memberId, Long lectureId) {
+        return jpaRepository.findByMemberIdAndLectureId(memberId, lectureId)
                 .map(this::toDomain);
     }
 
     @Override
-    public boolean existsByUserIdAndLectureId(Long userId, Long lectureId) {
-        return jpaRepository.existsByUserIdAndLectureId(userId, lectureId);
+    public boolean existsByMemberIdAndLectureId(Long memberId, Long lectureId) {
+        return jpaRepository.existsByMemberIdAndLectureId(memberId, lectureId);
     }
 
     @Override
@@ -789,7 +789,7 @@ public class ReviewEntityRepository implements ReviewRepository {
 
     private ReviewEntity toEntity(Review domain) {
         return ReviewEntity.of(
-                domain.getUserId(),
+                domain.getMemberId(),
                 domain.getLectureId(),
                 domain.getCertificateId(),
                 domain.getComment(),
@@ -812,7 +812,7 @@ public class ReviewEntityRepository implements ReviewRepository {
 
         return Review.of(
                 entity.getReviewId(),
-                entity.getUserId(),
+                entity.getMemberId(),
                 entity.getLectureId(),
                 entity.getCertificateId(),
                 entity.getComment(),
@@ -831,12 +831,18 @@ public class ReviewEntityRepository implements ReviewRepository {
 
 ## 체크리스트
 
-- [ ] Enum (ApprovalStatus, ReviewCategory) 생성
-- [ ] Domain 객체 (Certificate, Review, ReviewDetail) 생성
-- [ ] Repository 인터페이스 생성
-- [ ] 예외 클래스 생성
-- [ ] ErrorCode 추가
-- [ ] JPA Entity 생성
-- [ ] JPA Repository 생성
-- [ ] Repository 구현체 생성
-- [ ] 컴파일 확인
+- [x] Enum (ApprovalStatus, ReviewCategory) 생성
+- [x] Domain 객체 (Certificate, Review, ReviewDetail) 생성
+- [x] Repository 인터페이스 생성
+- [x] 예외 클래스 생성
+- [ ] ~~ErrorCode 추가~~ (기존 프로젝트 패턴에 따라 RuntimeException 직접 상속으로 변경)
+- [x] JPA Entity 생성
+- [x] JPA Repository 생성
+- [x] Repository 구현체 생성
+- [x] 컴파일 확인
+
+---
+
+## 완료일
+
+**2025년 12월 10일**

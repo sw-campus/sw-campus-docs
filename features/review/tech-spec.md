@@ -194,7 +194,7 @@ Set-Cookie: accessToken=...; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=
 
 ```json
 {
-  "userId": 1,
+  "memberId": 1,
   "nickname": "새닉네임"
 }
 ```
@@ -333,7 +333,7 @@ Cookie: accessToken=...
 {
   "reviewId": 1,
   "lectureId": 1,
-  "userId": 1,
+  "memberId": 1,
   "nickname": "사용자닉네임",
   "comment": "정말 유익한 강의였습니다...",
   "score": 4.3,
@@ -376,7 +376,7 @@ Cookie: accessToken=...
 {
   "reviewId": 1,
   "lectureId": 1,
-  "userId": 1,
+  "memberId": 1,
   "nickname": "사용자닉네임",
   "comment": "정말 유익한 강의였습니다...",
   "score": 4.3,
@@ -466,7 +466,7 @@ Cookie: accessToken=... (ADMIN 권한 필요)
       "reviewId": 1,
       "lectureId": 1,
       "lectureName": "Java 풀스택 개발자 과정",
-      "userId": 1,
+      "memberId": 1,
       "userName": "홍길동",
       "nickname": "길동이",
       "comment": "정말 유익한 강의였습니다...",
@@ -566,7 +566,7 @@ Cookie: accessToken=... (ADMIN 권한 필요)
   "reviewId": 1,
   "lectureId": 1,
   "lectureName": "Java 풀스택 개발자 과정",
-  "userId": 1,
+  "memberId": 1,
   "userName": "홍길동",
   "nickname": "길동이",
   "comment": "정말 유익한 강의였습니다...",
@@ -970,7 +970,7 @@ public boolean isLectureNameMatch(String dbLectureName, String ocrText) {
 
 | 버킷 | 경로 | 용도 |
 |------|------|------|
-| sw-campus-bucket | /certificates/{userId}/{filename} | 수료증 이미지 |
+| sw-campus-bucket | /certificates/{memberId}/{filename} | 수료증 이미지 |
 
 ### 9.3 이메일 서버 연동
 
