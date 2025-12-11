@@ -404,13 +404,14 @@ ocr:
 
 ## 체크리스트
 
-- [ ] OcrClient 인터페이스 생성 (domain)
-- [ ] OcrClientImpl 구현체 생성 (infra/ocr)
-- [ ] OcrResponse DTO 생성
-- [ ] RestTemplate 설정
-- [ ] CertificateService 구현
-- [ ] CertificateLectureMismatchException 추가
-- [ ] CertificateController 구현
-- [ ] Request/Response DTO 생성
-- [ ] application.yml OCR 설정 추가
-- [ ] 컴파일 및 API 테스트
+- [x] OcrClient 인터페이스 생성 (domain)
+- [x] OcrClientImpl 구현체 생성 (infra/ocr)
+- [x] OcrResponse DTO 생성
+- [x] RestTemplate 설정
+- [x] CertificateService 구현
+- [x] CertificateLectureMismatchException 추가
+- [x] CertificateController 구현
+- [x] Request/Response DTO 생성
+- [x] application.yml OCR 설정 추가
+- [x] 컴파일 및 API 테스트
+- [x] GlobalExceptionHandler에 CertificateLectureMismatchException 핸들러 추가
