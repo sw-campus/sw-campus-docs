@@ -101,6 +101,7 @@ public class ReviewService {
 
     /**
      * 후기 수정
+     * 승인된 후기는 사용자가 수정할 수 없습니다.
      */
     @Transactional
     public Review updateReview(Long memberId, Long reviewId, 
@@ -114,7 +115,12 @@ public class ReviewService {
             throw new ReviewNotOwnerException();
         }
 
-        // 3. 후기 수정
+        // 3. 승인 상태 확인 (승인된 후기는 사용자가 수정 불가)
+        if (review.isApproved()) {
+            throw new ReviewNotModifiableException();
+        }
+
+        // 4. 후기 수정
         review.update(comment, details);
 
         return reviewRepository.save(review);
@@ -158,26 +164,36 @@ public record ReviewEligibility(
 ```java
 package com.swcampus.domain.review.exception;
 
-import com.swcampus.shared.exception.BusinessException;
-import com.swcampus.shared.exception.ErrorCode;
-
-public class ReviewNotOwnerException extends BusinessException {
+public class ReviewNotOwnerException extends RuntimeException {
     public ReviewNotOwnerException() {
-        super(ErrorCode.REVIEW_NOT_OWNER);
+        super("본인의 후기만 수정할 수 있습니다");
     }
 }
 ```
+
+#### ReviewNotModifiableException.java
+```java
+package com.swcampus.domain.review.exception;
+
+public class ReviewNotModifiableException extends RuntimeException {
+    public ReviewNotModifiableException() {
+        super("승인된 후기는 수정할 수 없습니다");
+    }
+}
+```
+
+> **Note**: 승인된(APPROVED) 후기는 **사용자**가 수정할 수 없습니다.
+> 관리자는 별도 API를 통해 승인된 후기도 블라인드 처리 등 관리 가능합니다. (Phase 04)
 
 #### CertificateNotVerifiedException.java
 ```java
 package com.swcampus.domain.certificate.exception;
 
-import com.swcampus.shared.exception.BusinessException;
-import com.swcampus.shared.exception.ErrorCode;
-
-public class CertificateNotVerifiedException extends BusinessException {
+public class CertificateNotVerifiedException extends RuntimeException {
     public CertificateNotVerifiedException() {
-        super(ErrorCode.CERTIFICATE_NOT_VERIFIED);
+        super("수료증 인증이 필요합니다");
+    }
+}
     }
 }
 ```
@@ -489,14 +505,16 @@ public boolean hasNickname(String token) {
 
 ## 체크리스트
 
-- [ ] ReviewService 구현
-- [ ] ReviewEligibility DTO 생성
-- [ ] ReviewNotOwnerException 생성
-- [ ] CertificateNotVerifiedException 생성
-- [ ] CreateReviewRequest DTO 생성
-- [ ] UpdateReviewRequest DTO 생성
-- [ ] ReviewResponse DTO 생성
-- [ ] ReviewEligibilityResponse DTO 생성
-- [ ] ReviewController 구현
-- [ ] Validation 어노테이션 적용
-- [ ] 컴파일 및 API 테스트
+- [x] ReviewService 구현
+- [x] ReviewEligibility DTO 생성
+- [x] ReviewNotOwnerException 생성
+- [x] ReviewNotModifiableException 생성 (승인된 후기 사용자 수정 불가)
+- [x] CertificateNotVerifiedException 생성
+- [x] CreateReviewRequest DTO 생성
+- [x] UpdateReviewRequest DTO 생성
+- [x] ReviewResponse DTO 생성
+- [x] ReviewEligibilityResponse DTO 생성
+- [x] ReviewController 구현
+- [x] Validation 어노테이션 적용
+- [x] GlobalExceptionHandler에 예외 핸들러 추가
+- [x] 컴파일 및 API 테스트
