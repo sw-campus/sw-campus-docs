@@ -80,15 +80,17 @@ code-rules/
 | 테스트 전략 | Domain TDD 권장, 나머지 선택적 |
 
 ### server/07-swagger-documentation.md
-**참조 시점:** API 문서화, Controller/DTO 작성
+**참조 시점:** API 문서화, Controller/DTO 작성, 파일 업로드 API
 
 | 내용 | 설명 |
 |------|------|
 | 의존성 설정 | springdoc-openapi 설정 |
 | 전역 설정 | OpenApiConfig 작성법 |
 | Controller 문서화 | @Tag, @Operation, @ApiResponse 사용법 |
+| Multipart 파일 업로드 | ⚠️ @RequestPart 필수, @ModelAttribute 금지 |
 | DTO 문서화 | @Schema 사용법 |
 | 인증 표시 | @SecurityRequirement 사용법 |
+| 파라미터 예시 | @Parameter(example = "...") 작성법 |
 
 ---
 
@@ -109,7 +111,8 @@ code-rules/
 | Entity 작성 | server/01, 02, 03 |
 | 예외 처리 추가 | server/02, 05 |
 | API 엔드포인트 설계 | server/04, 07 |
-| API 문서화 | server/07 |
+| API 문서화 (Swagger) | server/07 |
+| 파일 업로드 API | server/04, 07 ⚠️ |
 | DTO 작성 | server/02, 07 |
 | build.gradle 수정 | server/03 |
 | 코드 리뷰 | server/06 |

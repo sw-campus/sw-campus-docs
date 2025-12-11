@@ -158,6 +158,98 @@ public class UserController {
 
 ---
 
+## 📤 Multipart 파일 업로드 처리
+
+> ⚠️ **중요**: `@ModelAttribute`와 `MultipartFile`을 함께 사용하면 Swagger UI에서 파일 업로드 필드가 표시되지 않습니다.
+
+### ❌ 잘못된 패턴 (Swagger UI 오류 발생)
+
+```java
+// @ModelAttribute + MultipartFile 조합은 Swagger에서 제대로 동작하지 않음
+@PostMapping(value = "/signup", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+public ResponseEntity<Response> signup(
+        @Valid @ModelAttribute SignupRequest request,  // ❌ 파일 필드가 표시되지 않음
+        @RequestParam("image") MultipartFile image) {
+    // ...
+}
+
+// Request DTO 내부에 MultipartFile 포함해도 동일한 문제
+@Getter @Setter
+public class SignupRequest {
+    private String email;
+    private MultipartFile image;  // ❌ Swagger에서 인식 안됨
+}
+```
+
+### ✅ 올바른 패턴 (@RequestPart 사용)
+
+```java
+@PostMapping(value = "/signup/organization", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+@Operation(summary = "기관 회원가입", description = "기관 사용자로 회원가입합니다.")
+@ApiResponses({
+    @ApiResponse(responseCode = "201", description = "회원가입 성공"),
+    @ApiResponse(responseCode = "400", description = "잘못된 요청")
+})
+public ResponseEntity<SignupResponse> signupOrganization(
+        @Parameter(description = "이메일", example = "org@example.com", required = true)
+        @RequestPart(name = "email") String email,
+        
+        @Parameter(description = "비밀번호 (8자 이상)", example = "Password123!", required = true)
+        @RequestPart(name = "password") String password,
+        
+        @Parameter(description = "이름", example = "김대표", required = true)
+        @RequestPart(name = "name") String name,
+        
+        @Parameter(description = "기관명", example = "ABC교육원", required = true)
+        @RequestPart(name = "organizationName") String organizationName,
+        
+        @Parameter(description = "재직증명서 이미지 (jpg, png)", required = true)
+        @RequestPart(name = "certificateImage") MultipartFile certificateImage
+) throws IOException {
+    
+    // Controller 내부에서 Request DTO 생성
+    SignupRequest request = SignupRequest.builder()
+            .email(email)
+            .password(password)
+            .name(name)
+            .organizationName(organizationName)
+            .certificateImage(certificateImage)
+            .build();
+    
+    return ResponseEntity.status(HttpStatus.CREATED)
+            .body(service.signup(request.toCommand()));
+}
+```
+
+### 파일만 업로드하는 경우
+
+```java
+@PostMapping(value = "/verify", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+@Operation(summary = "수료증 인증")
+public ResponseEntity<VerifyResponse> verifyCertificate(
+        @Parameter(description = "강의 ID", example = "1", required = true)
+        @RequestPart(name = "lectureId") String lectureIdStr,
+        
+        @Parameter(description = "수료증 이미지", required = true)
+        @RequestPart(name = "image") MultipartFile image
+) throws IOException {
+    Long lectureId = Long.parseLong(lectureIdStr);
+    // ...
+}
+```
+
+### Multipart 처리 규칙 요약
+
+| 항목 | 규칙 |
+|------|------|
+| 파일 + 텍스트 필드 | `@RequestPart`로 각 필드 분리 |
+| Content-Type | `MediaType.MULTIPART_FORM_DATA_VALUE` 명시 |
+| 숫자 타입 | String으로 받아서 파싱 (`Long.parseLong()`) |
+| 파라미터 설명 | 각 필드에 `@Parameter` 추가 |
+| Request DTO | Controller 내부에서 Builder로 생성 |
+
+---
+
 ## 📝 어노테이션 사용 규칙
 
 ### Controller 레벨
