@@ -119,6 +119,10 @@ sequenceDiagram
 - 강의 상세 페이지 → 본인 후기의 "수정" 버튼
 - 마이페이지 → "내가 작성한 후기" → "수정" 버튼
 
+> **Note**: 관리자가 승인(APPROVED)한 후기는 **사용자가** 수정할 수 없습니다.
+> PENDING 또는 REJECTED 상태의 후기만 사용자가 수정 가능합니다.
+> (관리자는 별도 API를 통해 승인된 후기도 블라인드 처리 등 관리 가능)
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -132,14 +136,21 @@ sequenceDiagram
     Backend->>DB: 후기 조회
     DB-->>Backend: 후기 데이터 반환
     Backend-->>Frontend: 200 OK (후기 데이터)
-    Frontend-->>User: 후기 수정 폼 표시<br/>(기존 데이터 채워짐)
-    
-    User->>Frontend: 수정된 내용 제출<br/>(별점, 후기 콘텐츠)
-    Frontend->>Backend: PUT /api/reviews/{reviewId}
-    Backend->>DB: 후기 업데이트
-    DB-->>Backend: 업데이트 완료
-    Backend-->>Frontend: 200 OK
-    Frontend-->>User: 성공 메시지 표시
+
+    alt 승인된 후기 (approvalStatus: APPROVED)
+        Frontend-->>User: 수정 불가 안내<br/>("승인된 후기는 수정할 수 없습니다")
+    else 미승인 후기 (PENDING 또는 REJECTED)
+        Frontend-->>User: 후기 수정 폼 표시<br/>(기존 데이터 채워짐)
+        User->>Frontend: 수정된 내용 제출<br/>(별점, 후기 콘텐츠)
+        Frontend->>Backend: PUT /api/reviews/{reviewId}
+        
+        Note over Backend: 승인 상태 재확인<br/>(APPROVED면 403 반환)
+        
+        Backend->>DB: 후기 업데이트
+        DB-->>Backend: 업데이트 완료
+        Backend-->>Frontend: 200 OK
+        Frontend-->>User: 성공 메시지 표시
+    end
 ```
 
 ---

@@ -403,6 +403,10 @@ Cookie: accessToken=...
 
 후기 수정
 
+> **Note**: 관리자가 승인(APPROVED)한 후기는 **사용자가** 수정할 수 없습니다.
+> PENDING 또는 REJECTED 상태의 후기만 사용자가 수정 가능합니다.
+> (관리자는 별도 관리자 API를 통해 승인된 후기도 블라인드 처리 등 관리 가능)
+
 **Request**
 ```
 Cookie: accessToken=...
@@ -434,6 +438,7 @@ Cookie: accessToken=...
 
 **Errors**
 - `403` REVIEW007: 본인의 후기만 수정할 수 있습니다
+- `403` REVIEW008: 승인된 후기는 수정할 수 없습니다
 - `404` REVIEW006: 후기를 찾을 수 없습니다
 
 ---
