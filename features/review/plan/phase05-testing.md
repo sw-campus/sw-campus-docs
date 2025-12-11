@@ -564,12 +564,12 @@ class ReviewControllerTest {
 
 ## 체크리스트
 
-- [ ] ReviewTest 작성 및 통과
-- [ ] CertificateTest 작성 및 통과
-- [ ] CertificateServiceTest 작성 및 통과
-- [ ] ReviewServiceTest 작성 및 통과
-- [ ] CertificateControllerTest 작성
-- [ ] ReviewControllerTest 작성
-- [ ] AdminReviewControllerTest 작성
+- [x] ReviewTest 작성 및 통과
+- [x] CertificateTest 작성 및 통과
+- [x] CertificateServiceTest 작성 및 통과
+- [x] ReviewServiceTest 작성 및 통과
+- [x] CertificateControllerTest 작성
+- [x] ReviewControllerTest 작성
+- [x] AdminReviewControllerTest 작성
 - [ ] 시나리오 검증 완료
 - [ ] 코드 커버리지 확인 (Domain 90% 목표)

@@ -613,17 +613,18 @@ public class AsyncConfig {
 
 ## 체크리스트
 
-- [ ] AdminReviewService 구현
-- [ ] EmailService 인터페이스 생성 (domain)
-- [ ] EmailServiceImpl 구현 (infra)
-- [ ] BlindReviewRequest DTO 생성
-- [ ] AdminReviewListResponse DTO 생성
-- [ ] AdminCertificateResponse DTO 생성
-- [ ] AdminReviewDetailResponse DTO 생성
-- [ ] CertificateApprovalResponse DTO 생성
-- [ ] ReviewApprovalResponse DTO 생성
-- [ ] AdminReviewController 구현
-- [ ] @PreAuthorize("hasRole('ADMIN')") 적용
-- [ ] @Async 이메일 발송 설정
-- [ ] application.yml 메일 설정 추가
-- [ ] 컴파일 및 API 테스트
+- [x] AdminReviewService 구현
+- [x] EmailService 인터페이스 생성 (domain)
+- [x] EmailServiceImpl 구현 (api/mail - ReviewEmailService)
+- [x] BlindReviewRequest DTO 생성
+- [x] AdminReviewListResponse DTO 생성
+- [x] AdminCertificateResponse DTO 생성
+- [x] AdminReviewDetailResponse DTO 생성
+- [x] CertificateApprovalResponse DTO 생성
+- [x] ReviewApprovalResponse DTO 생성
+- [x] AdminReviewController 구현
+- [x] SecurityConfig 관리자 API 경로 설정
+- [x] @Async 이메일 발송 설정
+- [x] GlobalExceptionHandler 예외 처리 추가
+- [x] 컴파일 성공
+
