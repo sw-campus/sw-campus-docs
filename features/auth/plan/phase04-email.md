@@ -241,6 +241,10 @@ public class EmailService {
     private String frontendUrl;
 
     public void sendVerificationEmail(String email) {
+        sendVerificationEmail(email, "personal");
+    }
+
+    public void sendVerificationEmail(String email, String signupType) {
         // 이미 가입된 이메일 확인
         if (memberRepository.existsByEmail(email)) {
             throw new DuplicateEmailException();
@@ -253,8 +257,8 @@ public class EmailService {
         EmailVerification verification = EmailVerification.create(email);
         emailVerificationRepository.save(verification);
 
-        // 이메일 발송
-        String verifyUrl = frontendUrl + "/auth/verify?token=" + verification.getToken();
+        // 이메일 발송 (signupType을 인증 링크에 포함)
+        String verifyUrl = frontendUrl + "/auth/verify?token=" + verification.getToken() + "&type=" + signupType;
         String subject = "[SW Campus] 이메일 인증";
         String content = buildEmailContent(verifyUrl);
         
@@ -337,25 +341,43 @@ public class AuthController {
 
     private final EmailService emailService;
 
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
     @PostMapping("/email/send")
     public ResponseEntity<Map<String, String>> sendVerificationEmail(
             @Valid @RequestBody EmailSendRequest request) {
-        emailService.sendVerificationEmail(request.getEmail());
+        emailService.sendVerificationEmail(request.getEmail(), request.getSignupType());
         return ResponseEntity.ok(Map.of("message", "인증 메일이 발송되었습니다"));
     }
 
     @GetMapping("/email/verify")
     public ResponseEntity<Void> verifyEmail(
             @RequestParam String token,
-            @Value("${app.frontend-url}") String frontendUrl) {
+            @RequestParam(value = "type", defaultValue = "personal") String signupType) {
+        
+        // 허용된 signupType만 처리
+        String redirectPath = switch (signupType) {
+            case "personal" -> "/signup/personal";
+            case "organization" -> "/signup/organization";
+            default -> null;
+        };
+        
+        // 잘못된 signupType인 경우 에러 페이지로 리다이렉트
+        if (redirectPath == null) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                .header("Location", frontendUrl + "/signup?error=invalid_type")
+                .build();
+        }
+        
         try {
             emailService.verifyEmail(token);
             return ResponseEntity.status(HttpStatus.FOUND)
-                .header("Location", frontendUrl + "/signup?verified=true")
+                .header("Location", frontendUrl + redirectPath + "?verified=true")
                 .build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.FOUND)
-                .header("Location", frontendUrl + "/signup?error=invalid_token")
+                .header("Location", frontendUrl + redirectPath + "?error=invalid_token")
                 .build();
         }
     }
@@ -374,10 +396,18 @@ public class AuthController {
 // EmailSendRequest.java
 @Getter
 @NoArgsConstructor
+@AllArgsConstructor
 public class EmailSendRequest {
     @NotBlank(message = "이메일은 필수입니다")
     @Email(message = "올바른 이메일 형식이 아닙니다")
     private String email;
+
+    private String signupType = "personal";  // 기본값: personal
+
+    public EmailSendRequest(String email) {
+        this.email = email;
+        this.signupType = "personal";
+    }
 }
 
 // EmailStatusResponse.java
@@ -399,10 +429,15 @@ public class EmailStatusResponse {
 ./gradlew test --tests "*EmailService*"
 ./gradlew test --tests "*AuthController*Email*"
 
-# API 수동 테스트
+# API 수동 테스트 (일반 회원가입)
 curl -X POST http://localhost:8080/api/v1/auth/email/send \
   -H "Content-Type: application/json" \
-  -d '{"email": "test@example.com"}'
+  -d '{"email": "test@example.com", "signupType": "personal"}'
+
+# API 수동 테스트 (기관 회원가입)
+curl -X POST http://localhost:8080/api/v1/auth/email/send \
+  -H "Content-Type: application/json" \
+  -d '{"email": "org@example.com", "signupType": "organization"}'
 
 curl -X GET "http://localhost:8080/api/v1/auth/email/status?email=test@example.com"
 ```
