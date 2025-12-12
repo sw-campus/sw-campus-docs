@@ -11,24 +11,21 @@ sequenceDiagram
     participant DB as Database
 
     User->>Frontend: 이메일 입력 후<br/>"인증 메일 발송" 버튼 클릭
-    Frontend->>Backend: POST /api/auth/email/send
+    Frontend->>Backend: POST /api/auth/email/send<br/>(signupType: "personal")
     Backend->>DB: 이메일 중복 확인
     DB-->>Backend: 조회 결과 반환
 
     alt 이메일 사용 가능
         Backend->>DB: 인증 토큰 저장<br/>(유효시간: 1시간)
-        Note over Backend: 인증 메일 발송
+        Note over Backend: 인증 메일 발송<br/>(type=personal 포함)
         Backend-->>Frontend: 발송 완료 응답
         Frontend-->>User: "인증 메일을 확인해주세요"
 
-        Note over User: 이메일에서 인증 링크 클릭
+        Note over User: 이메일에서 인증 링크 클릭<br/>(/auth/verify?token=xxx&type=personal)
         Backend->>DB: 이메일 인증 상태 업데이트<br/>(verified: true)
+        Backend-->>Frontend: /signup/personal?verified=true<br/>로 리다이렉트
         
-        User->>Frontend: "인증 확인" 버튼 클릭
-        Frontend->>Backend: GET /api/auth/email/status
-        Backend-->>Frontend: 인증 완료 응답
-        
-        Frontend-->>User: 나머지 정보 입력 폼 활성화
+        Frontend-->>User: 회원가입 폼 표시
         User->>Frontend: 회원가입 폼 제출<br/>(비밀번호, 기타 정보)
         Frontend->>Backend: POST /api/auth/signup
         Backend->>DB: 사용자 정보 저장<br/>(비밀번호 BCrypt 암호화)
@@ -95,26 +92,23 @@ sequenceDiagram
     participant DB as Database
 
     User->>Frontend: 이메일 입력 후<br/>"인증 메일 발송" 버튼 클릭
-    Frontend->>Backend: POST /api/auth/email/send
+    Frontend->>Backend: POST /api/auth/email/send<br/>(signupType: "organization")
     Backend->>DB: 이메일 중복 확인
     DB-->>Backend: 조회 결과 반환
 
     alt 이메일 사용 가능
         Backend->>DB: 인증 토큰 저장<br/>(유효시간: 1시간)
-        Note over Backend: 인증 메일 발송
+        Note over Backend: 인증 메일 발송<br/>(type=organization 포함)
         Backend-->>Frontend: 발송 완료 응답
         Frontend-->>User: "인증 메일을 확인해주세요"
 
-        Note over User: 이메일에서 인증 링크 클릭
+        Note over User: 이메일에서 인증 링크 클릭<br/>(/auth/verify?token=xxx&type=organization)
         Backend->>DB: 이메일 인증 상태 업데이트<br/>(verified: true)
+        Backend-->>Frontend: /signup/organization?verified=true<br/>로 리다이렉트
         
-        User->>Frontend: "인증 확인" 버튼 클릭
-        Frontend->>Backend: GET /api/auth/email/status
-        Backend-->>Frontend: 인증 완료 응답
-        
-        Frontend-->>User: 나머지 정보 입력 폼 활성화
+        Frontend-->>User: 기관 회원가입 폼 표시
         User->>Frontend: 회원가입 폼 제출<br/>(비밀번호, 재직증명서 이미지)
-        Frontend->>Backend: POST /api/auth/signup/provider<br/>(이미지 포함)
+        Frontend->>Backend: POST /api/auth/signup/organization<br/>(이미지 포함)
         Backend->>S3: 재직증명서 이미지 업로드
         S3-->>Backend: 이미지 URL 반환
         Backend->>DB: 공급자 정보 저장<br/>(비밀번호 BCrypt 암호화,<br/>이미지 URL, 승인상태: PENDING)
