@@ -320,11 +320,48 @@ sw-campus-ai/
 
 ---
 
+## 테스트 환경 설정 수정 (2025-12-13)
+
+### H2 Database 스키마 설정
+
+통합 테스트에서 `Schema "SWCAMPUS" not found` 오류가 발생하여, H2 설정에 스키마 자동 생성 옵션을 추가했습니다.
+
+**수정 파일:**
+- `sw-campus-api/src/test/resources/application-test.yml`
+- `sw-campus-infra/db-postgres/src/test/resources/application-test.yml`
+
+**수정 내용:**
+```yaml
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;INIT=CREATE SCHEMA IF NOT EXISTS swcampus
+```
+
+### Mockito Matcher 수정
+
+`any()`와 원시 값을 혼용할 때 발생하는 `InvalidUseOfMatchersException` 해결을 위해 `eq()` 래퍼를 적용했습니다.
+
+**수정 파일:**
+- `CertificateServiceTest.java`
+- `CertificateIntegrationTest.java`
+
+**수정 예시:**
+```java
+// Before
+given(fileStorageService.upload(any(), "certificates", anyString(), anyString()))
+
+// After
+given(fileStorageService.upload(any(), eq("certificates"), anyString(), anyString()))
+```
+
+---
+
 ## 향후 작업
 
 - [x] Controller 통합 테스트 작성
 - [x] 시나리오 기반 E2E 테스트
 - [x] Docker 자동화 (OCR 서비스)
+- [x] 테스트 환경 설정 수정 (H2 스키마, Mockito)
 - [ ] 코드 커버리지 측정 및 리포트
 
 ---

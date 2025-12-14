@@ -25,8 +25,8 @@
 
 | Method | URL | 설명 | Status Code |
 |:------:|-----|------|:-----------:|
-| GET | `/api/v1/admin/members/surveys` | 전체 설문조사 목록 (페이징) | 200 OK |
-| GET | `/api/v1/admin/members/{userId}/survey` | 특정 회원 설문조사 조회 | 200 OK |
+| GET | `/api/v1/admin/surveys` | 전체 설문조사 목록 (페이징) | 200 OK |
+| GET | `/api/v1/admin/surveys/members/{memberId}` | 특정 회원 설문조사 조회 | 200 OK |
 
 ---
 
@@ -37,7 +37,7 @@
 | 항목 | 상태 | 비고 |
 |-----|:----:|------|
 | 네이밍 컨벤션 | ✅ | `Admin{Domain}Controller` 패턴 |
-| URL 설계 | ✅ | `/api/v1/admin/members/...` |
+| URL 설계 | ✅ | `/api/v1/admin/surveys/...` |
 | Swagger 문서화 | ✅ | `@Tag`, `@Operation`, `@ApiResponses`, `@Parameter` |
 | 권한 검사 | ✅ | `@PreAuthorize("hasRole('ADMIN')")` |
 | 예외 처리 | ✅ | GlobalExceptionHandler에 404, 409 핸들러 추가 |
@@ -83,10 +83,10 @@ SurveyController - 설문조사 API 테스트
 
 ```
 AdminSurveyController - 관리자 설문조사 API 테스트
-├── GET /api/v1/admin/members/surveys
+├── GET /api/v1/admin/surveys
 │   ├── ✅ 전체 설문조사 목록 조회 성공 (200)
 │   └── ✅ 빈 목록 조회 (200)
-└── GET /api/v1/admin/members/{userId}/survey
+└── GET /api/v1/admin/surveys/members/{memberId}
     ├── ✅ 특정 회원 설문조사 조회 성공 (200)
     └── ✅ 설문조사 없는 회원 조회 시 실패 (404)
 
