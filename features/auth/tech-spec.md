@@ -81,7 +81,11 @@ com.swcampus.api/
 │   └── response/
 │       ├── EmailStatusResponse.java
 │       └── SignupResponse.java
-├── auth/
+├── security/
+│   ├── JwtAuthenticationFilter.java
+│   ├── CurrentMember.java            # 커스텀 어노테이션 (@AuthenticationPrincipal 래퍼)
+│   └── SecurityConfig.java
+├── oauth/
 │   ├── OAuthController.java
 │   ├── request/
 │   │   └── OAuthCallbackRequest.java
@@ -96,6 +100,7 @@ com.swcampus.domain/
 ├── auth/
 │   ├── AuthService.java
 │   ├── TokenProvider.java
+│   ├── MemberPrincipal.java          # 인증된 사용자 정보 (Principal)
 │   ├── EmailVerification.java
 │   ├── EmailVerificationRepository.java
 │   ├── RefreshToken.java
@@ -580,7 +585,58 @@ Path: /
 - 새로운 기기에서 로그인 시 기존 Refresh Token 삭제
 - `REFRESH_TOKENS` 테이블에 `USER_ID` UNIQUE 제약으로 구현
 
-### 5.5 JWT Payload
+### 5.5 MemberPrincipal (인증 사용자 정보)
+
+인증된 사용자 정보는 Spring Security 표준에 따라 `Principal`을 통해 접근합니다.
+
+**MemberPrincipal 클래스**
+```java
+public record MemberPrincipal(
+    Long memberId,
+    String email,
+    Role role
+) {}
+```
+
+**JwtAuthenticationFilter에서 설정**
+```java
+MemberPrincipal principal = new MemberPrincipal(memberId, email, role);
+UsernamePasswordAuthenticationToken authentication =
+    new UsernamePasswordAuthenticationToken(principal, null, authorities);
+SecurityContextHolder.getContext().setAuthentication(authentication);
+```
+
+**@CurrentMember 커스텀 어노테이션**
+
+`@AuthenticationPrincipal`을 직접 사용하는 대신, 커스텀 어노테이션 `@CurrentMember`를 사용합니다.
+
+```java
+@Target(ElementType.PARAMETER)
+@Retention(RetentionPolicy.RUNTIME)
+@AuthenticationPrincipal(errorOnInvalidType = true)
+@Parameter(hidden = true)  // Swagger 문서에서 숨김
+public @interface CurrentMember {
+}
+```
+
+**이점**
+- Swagger(OpenAPI) 문서에서 자동 숨김 처리
+- 타입 안전성 보장 (`errorOnInvalidType = true`)
+- 도메인 친화적인 어노테이션 네이밍
+- DRY 원칙 준수 (반복 어노테이션 제거)
+
+**Controller에서 사용**
+```java
+@GetMapping("/me")
+public ResponseEntity<?> getMyInfo(@CurrentMember MemberPrincipal member) {
+    Long memberId = member.memberId();
+    String email = member.email();
+    Role role = member.role();
+    // ...
+}
+```
+
+### 5.6 JWT Payload
 
 **Access Token**
 ```json
@@ -588,6 +644,7 @@ Path: /
   "sub": "1",
   "email": "user@example.com",
   "role": "USER",
+  "hasNickname": true,
   "iat": 1701763200,
   "exp": 1701766800
 }
@@ -641,4 +698,6 @@ Path: /
 
 | 버전 | 날짜 | 변경 내용 |
 |------|------|----------|
+| 0.3 | 2025-12-14 | @CurrentMember 커스텀 어노테이션 도입 (Swagger 숨김, 타입 안전성) |
+| 0.2 | 2025-12-14 | MemberPrincipal 도입 (Spring Security 표준 준수) |
 | 0.1 | 2025-12-05 | 초안 작성 |
