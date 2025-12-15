@@ -42,6 +42,9 @@
     - [ ] **Future Proofing**: 추후 승인 로직 추가를 위해 업데이트 로직을 별도 private 메서드로 분리 고려.
 
 ## 3. 완료 조건 (Definition of Done)
-- [ ] `ReviewService`, `LectureService` 수정 후 기존 테스트가 모두 통과한다.
-- [ ] `MemberSurveyService`가 정상적으로 Upsert를 수행한다.
-- [ ] `OrganizationService`가 파일 업로드와 함께 정보를 업데이트한다.
+- [x] `ReviewService`, `LectureService` 수정 후 기존 테스트가 모두 통과한다.
+- [x] `MemberSurveyService`가 정상적으로 Upsert를 수행한다.
+- [x] `OrganizationService`가 파일 업로드와 함께 정보를 업데이트한다.
+
+## 4. 리포트
+- [Phase 02 리포트](../report/phase02.md)

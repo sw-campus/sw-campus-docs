@@ -11,48 +11,51 @@
 
 ### 2.1 Request DTO 구현
 - **패키지**: `com.swcampus.api.mypage.request`
-- [ ] **`UpdateProfileRequest.java`**
+- [x] **`UpdateProfileRequest.java`**
     - 필드: `nickname`, `phone`, `address`
     - Validation: `@Size(max=20)`, `@Pattern`(전화번호) 등 적용
-- [ ] **`UpdateOrganizationRequest.java`**
+- [x] **`UpdateOrganizationRequest.java`**
     - 필드: `organizationName`, `representativeName`, `phone`, `address`
-    - 필드: `MultipartFile businessRegistration` (재직증명서/사업자등록증)
+    - 필드: `MultipartFile businessRegistration` (재직증명서 파일)
     - Validation: 필수 값 체크
-- [ ] **`SurveyRequest.java`**
+- [x] **`SurveyRequest.java`**
     - 필드: `major`, `bootcampCompleted`, `wantedJobs`, `licenses`, `hasGovCard`, `affordableAmount`
     - Validation: 없음 (All Optional)
 
 ### 2.2 Response DTO 구현
 - **패키지**: `com.swcampus.api.mypage.response`
-- [ ] **`MypageProfileResponse.java`**
+- [x] **`MypageProfileResponse.java`**
     - 필드: `email`, `name`, `nickname`, `phone`, `address`, `profileImageUrl`, `provider`, `role`, `hasSurvey`
     - 정적 팩토리 메서드 `from(Member member, boolean hasSurvey)` 구현
-- [ ] **`MyReviewListResponse.java`**
-    - 필드: `reviewId`, `lectureId`, `lectureName`, `rating`, `content`, `approvalStatus`, `rejectReason`, `createdAt`, `updatedAt`, `canEdit`
+- [x] **`MyReviewListResponse.java`**
+    - 필드: `reviewId`, `lectureId`, `lectureName`, `rating`, `content`, `approvalStatus`, `createdAt`, `updatedAt`, `canEdit`
     - `canEdit` 로직: `status == REJECTED`
-- [ ] **`MyLectureListResponse.java`**
-    - 필드: `lectureId`, `lectureName`, `lectureImageUrl`, `lectureAuthStatus`, `rejectReason`, `status`, `createdAt`, `updatedAt`, `canEdit`
+    - *변경사항: `rejectReason` 필드 제거 (도메인 모델 미지원)*
+- [x] **`MyLectureListResponse.java`**
+    - 필드: `lectureId`, `lectureName`, `lectureImageUrl`, `lectureAuthStatus`, `status`, `createdAt`, `updatedAt`, `canEdit`
     - `canEdit` 로직: `status == REJECTED`
-- [ ] **`OrganizationInfoResponse.java`**
-    - 필드: `organizationId`, `organizationName`, `representativeName`, `businessNumber`, `phone`, `address`, `approvalStatus`, `rejectReason`
-- [ ] **`SurveyResponse.java`**
+    - *변경사항: `rejectReason` 필드 제거 (도메인 모델 미지원)*
+- [x] **`OrganizationInfoResponse.java`**
+    - 필드: `organizationId`, `organizationName`, `representativeName`, `phone`, `address`, `approvalStatus`
+    - *변경사항: `businessNumber`, `rejectReason` 필드 제거 (도메인 모델 미지원)*
+- [x] **`SurveyResponse.java`**
     - 필드: `surveyId`, `major`, `bootcampCompleted`, ... , `exists`
     - 정적 팩토리 메서드 `empty()` 및 `from(MemberSurvey survey)` 구현
 
 ### 2.3 Controller 스켈레톤 구현
 - **클래스**: `com.swcampus.api.mypage.MypageController`
-- [ ] `@RestController`, `@RequestMapping("/api/v1/mypage")` 적용
-- [ ] **메서드 정의** (Return `null` or Empty Body)
+- [x] `@RestController`, `@RequestMapping("/api/v1/mypage")` 적용
+- [x] **메서드 정의** (Return `null` or Empty Body)
     - `getProfile(@CurrentMember MemberPrincipal member)`
     - `updateProfile(@CurrentMember MemberPrincipal member, @RequestBody UpdateProfileRequest request)`
     - `getMyReviews(...)`
     - `getSurvey(...)`
-    - `upsertSurvey(...)`
+    - `saveSurvey(...)` (*변경사항: `upsertSurvey` -> `saveSurvey`*)
     - `getMyLectures(...)`
     - `getOrganization(...)`
     - `updateOrganization(...)`
 
 ## 3. 완료 조건 (Definition of Done)
-- [ ] 모든 DTO 클래스가 생성되었다.
-- [ ] `MypageController`가 생성되었고, Swagger UI에서 엔드포인트가 확인된다.
-- [ ] `./gradlew clean build -x test`가 성공한다.
+- [x] 모든 DTO 클래스가 생성되었다.
+- [x] `MypageController`가 생성되었고, Swagger UI에서 엔드포인트가 확인된다.
+- [x] `./gradlew clean build -x test`가 성공한다.
