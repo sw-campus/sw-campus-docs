@@ -193,20 +193,20 @@ public class SignupRequest {
 public ResponseEntity<SignupResponse> signupOrganization(
         @Parameter(description = "이메일", example = "org@example.com", required = true)
         @RequestPart(name = "email") String email,
-        
+
         @Parameter(description = "비밀번호 (8자 이상)", example = "Password123!", required = true)
         @RequestPart(name = "password") String password,
-        
+
         @Parameter(description = "이름", example = "김대표", required = true)
         @RequestPart(name = "name") String name,
-        
+
         @Parameter(description = "기관명", example = "ABC교육원", required = true)
         @RequestPart(name = "organizationName") String organizationName,
-        
+
         @Parameter(description = "재직증명서 이미지 (jpg, png)", required = true)
         @RequestPart(name = "certificateImage") MultipartFile certificateImage
 ) throws IOException {
-    
+
     // Controller 내부에서 Request DTO 생성
     SignupRequest request = SignupRequest.builder()
             .email(email)
@@ -215,7 +215,7 @@ public ResponseEntity<SignupResponse> signupOrganization(
             .organizationName(organizationName)
             .certificateImage(certificateImage)
             .build();
-    
+
     return ResponseEntity.status(HttpStatus.CREATED)
             .body(service.signup(request.toCommand()));
 }
@@ -229,12 +229,151 @@ public ResponseEntity<SignupResponse> signupOrganization(
 public ResponseEntity<VerifyResponse> verifyCertificate(
         @Parameter(description = "강의 ID", example = "1", required = true)
         @RequestPart(name = "lectureId") String lectureIdStr,
-        
+
         @Parameter(description = "수료증 이미지", required = true)
         @RequestPart(name = "image") MultipartFile image
 ) throws IOException {
     Long lectureId = Long.parseLong(lectureIdStr);
     // ...
+}
+```
+
+---
+
+## 🔷 고급 Multipart 패턴
+
+### JSON 문자열 + 파일 업로드 (복합 데이터)
+
+> 복잡한 객체 구조를 Multipart로 전송해야 할 때, JSON 문자열로 받아서 파싱합니다.
+
+```java
+@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+@Operation(summary = "강의 등록", description = "새로운 강의를 등록합니다.")
+@SecurityRequirement(name = "cookieAuth")
+@ApiResponses({
+    @ApiResponse(responseCode = "201", description = "등록 성공"),
+    @ApiResponse(responseCode = "400", description = "잘못된 요청")
+})
+public ResponseEntity<LectureResponse> createLecture(
+        @CurrentMember MemberPrincipal member,
+
+        // ✅ 핵심: schema 속성으로 JSON 구조를 Swagger에서 표시
+        @Parameter(
+            description = "강의 정보 (JSON string)",
+            schema = @io.swagger.v3.oas.annotations.media.Schema(
+                implementation = LectureCreateRequest.class
+            )
+        )
+        @RequestPart("lecture") String lectureJson,
+
+        @Parameter(description = "강의 대표 이미지 파일")
+        @RequestPart(value = "image", required = false) MultipartFile image,
+
+        @Parameter(description = "강사 이미지 파일 목록")
+        @RequestPart(value = "teacherImages", required = false) List<MultipartFile> teacherImages
+) throws IOException {
+
+    // JSON 파싱
+    LectureCreateRequest request = objectMapper.readValue(lectureJson, LectureCreateRequest.class);
+
+    // 수동 유효성 검증 (@Valid가 @RequestPart String에 동작하지 않으므로)
+    Set<ConstraintViolation<LectureCreateRequest>> violations = validator.validate(request);
+    if (!violations.isEmpty()) {
+        throw new ConstraintViolationException(violations);
+    }
+
+    // ...
+}
+```
+
+**⚠️ 주의사항:**
+- `@RequestPart`로 받은 JSON 문자열에는 `@Valid`가 동작하지 않음
+- 반드시 `Validator`를 주입받아 수동 검증 필요
+- `schema = @Schema(implementation = ...)` 없으면 Swagger에서 JSON 구조 표시 안됨
+
+### 다중 파일 업로드 (List<MultipartFile>)
+
+```java
+@PutMapping(value = "/{lectureId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+@Operation(summary = "강의 수정")
+public ResponseEntity<LectureResponse> updateLecture(
+        @PathVariable Long lectureId,
+
+        @Parameter(description = "강의 정보 (JSON string)",
+            schema = @Schema(implementation = LectureUpdateRequest.class))
+        @RequestPart("lecture") String lectureJson,
+
+        @Parameter(description = "강의 대표 이미지")
+        @RequestPart(value = "image", required = false) MultipartFile image,
+
+        // ✅ 다중 파일: List<MultipartFile>
+        @Parameter(description = "강사 이미지 목록 (신규 강사 수와 일치해야 함)")
+        @RequestPart(value = "teacherImages", required = false) List<MultipartFile> teacherImages
+) throws IOException {
+    // ...
+}
+```
+
+### 다수의 개별 파일 필드 (named files)
+
+> 파일 개수가 고정되어 있고 각각 의미가 다른 경우
+
+```java
+@PatchMapping(value = "/organization", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+@Operation(summary = "기관 정보 수정")
+public ResponseEntity<Void> updateOrganization(
+        @CurrentMember MemberPrincipal member,
+
+        @Parameter(description = "기관명", example = "SW Campus")
+        @RequestPart(name = "organizationName") String organizationName,
+
+        @Parameter(description = "기관 설명")
+        @RequestPart(name = "description", required = false) String description,
+
+        @Parameter(description = "기관 로고 이미지")
+        @RequestPart(name = "logo", required = false) MultipartFile logo,
+
+        // ✅ 개별 명명된 파일 필드들
+        @Parameter(description = "시설 이미지 1")
+        @RequestPart(name = "facilityImage1", required = false) MultipartFile facilityImage1,
+
+        @Parameter(description = "시설 이미지 2")
+        @RequestPart(name = "facilityImage2", required = false) MultipartFile facilityImage2,
+
+        @Parameter(description = "시설 이미지 3")
+        @RequestPart(name = "facilityImage3", required = false) MultipartFile facilityImage3,
+
+        @Parameter(description = "시설 이미지 4")
+        @RequestPart(name = "facilityImage4", required = false) MultipartFile facilityImage4
+) {
+    // ...
+}
+```
+
+### 숫자 타입 파싱 시 예외 처리
+
+> `@RequestPart`로 받은 String을 숫자로 파싱할 때는 반드시 예외 처리 필요
+
+```java
+@PostMapping(value = "/signup/organization", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+public ResponseEntity<Response> signupOrganization(
+        // ... 다른 필드들
+
+        @Parameter(description = "기관 ID (기존 기관 선택 시)", example = "1")
+        @RequestPart(name = "organizationId", required = false) String organizationIdStr
+) {
+    // ✅ 올바른 파싱 (예외 처리)
+    Long organizationId = null;
+    if (organizationIdStr != null && !organizationIdStr.isBlank()) {
+        try {
+            organizationId = Long.parseLong(organizationIdStr);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("유효하지 않은 기관 ID 형식입니다: " + organizationIdStr);
+        }
+    }
+
+    // ❌ 잘못된 패턴 (예외 처리 없음)
+    // Long organizationId = Long.parseLong(organizationIdStr);  // NumberFormatException 발생 가능
 }
 ```
 
@@ -244,9 +383,13 @@ public ResponseEntity<VerifyResponse> verifyCertificate(
 |------|------|
 | 파일 + 텍스트 필드 | `@RequestPart`로 각 필드 분리 |
 | Content-Type | `MediaType.MULTIPART_FORM_DATA_VALUE` 명시 |
-| 숫자 타입 | String으로 받아서 파싱 (`Long.parseLong()`) |
+| 숫자 타입 | String으로 받아서 파싱 + **try-catch 필수** |
 | 파라미터 설명 | 각 필드에 `@Parameter` 추가 |
 | Request DTO | Controller 내부에서 Builder로 생성 |
+| JSON 문자열 | `schema = @Schema(implementation = ...)` 필수 |
+| JSON 유효성 검증 | `Validator` 수동 검증 필수 |
+| 다중 파일 | `List<MultipartFile>` 사용 |
+| 선택적 파일 | `required = false` 명시 |
 
 ---
 
@@ -380,13 +523,59 @@ public record ErrorResponse(
 
 ## 🔒 인증 API 표시
 
-### 인증이 필요한 API
+### Controller 전체가 인증 필요한 경우 (Class-level)
+
+> 마이페이지, 관리자 API 등 모든 엔드포인트가 인증 필요한 경우
 
 ```java
-@SecurityRequirement(name = "cookieAuth")
-@DeleteMapping("/{id}")
-public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+@RestController
+@RequestMapping("/api/v1/mypage")
+@RequiredArgsConstructor
+@Tag(name = "마이페이지", description = "마이페이지 관련 API")
+@SecurityRequirement(name = "cookieAuth")  // ✅ 클래스 레벨에 선언
+public class MypageController {
+
+    // 모든 메서드에 자동 적용됨
+    @GetMapping("/profile")
+    @Operation(summary = "내 정보 조회")
+    public ResponseEntity<ProfileResponse> getProfile(...) { }
+
+    @PatchMapping("/profile")
+    @Operation(summary = "내 정보 수정")
+    public ResponseEntity<Void> updateProfile(...) { }
+}
+```
+
+```java
+// 관리자 API 예시
+@RestController
+@RequestMapping("/api/v1/admin")
+@RequiredArgsConstructor
+@Tag(name = "Admin", description = "관리자 API")
+@SecurityRequirement(name = "cookieAuth")  // ✅ 관리자 API는 반드시 인증 필요
+public class AdminController {
     // ...
+}
+```
+
+### 일부 메서드만 인증 필요한 경우 (Method-level)
+
+```java
+@RestController
+@RequestMapping("/api/v1/reviews")
+@Tag(name = "Review", description = "리뷰 API")
+public class ReviewController {
+
+    // 인증 불필요
+    @GetMapping("/{lectureId}")
+    @Operation(summary = "강의 리뷰 목록 조회")
+    public ResponseEntity<List<ReviewResponse>> getReviews(...) { }
+
+    // ✅ 인증 필요 (메서드 레벨)
+    @PostMapping
+    @Operation(summary = "리뷰 작성")
+    @SecurityRequirement(name = "cookieAuth")
+    public ResponseEntity<ReviewResponse> createReview(...) { }
 }
 ```
 
@@ -399,6 +588,14 @@ public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
     // ...
 }
 ```
+
+### @SecurityRequirement 사용 규칙
+
+| 상황 | 적용 위치 | 예시 |
+|------|----------|------|
+| 모든 메서드 인증 필요 | Class-level | 마이페이지, 관리자 API |
+| 일부 메서드만 인증 필요 | Method-level | 리뷰 API (조회는 공개, 작성은 인증) |
+| 인증 불필요 | 생략 | 로그인, 회원가입, 공개 조회 |
 
 ---
 
@@ -421,12 +618,21 @@ sw-campus-api/
 
 ## ✅ 체크리스트
 
-### Controller
+### Controller (필수)
 
 - [ ] `@Tag`로 API 그룹 분류했는가?
 - [ ] 모든 메서드에 `@Operation(summary = "...")` 있는가?
 - [ ] 주요 응답 코드에 `@ApiResponse` 있는가?
-- [ ] 인증 필요 API에 `@SecurityRequirement` 있는가?
+- [ ] 인증 필요 API에 `@SecurityRequirement` 있는가? (Class 또는 Method 레벨)
+
+### Multipart API (필수)
+
+- [ ] `@RequestPart`로 각 필드를 분리했는가? (`@ModelAttribute` 금지)
+- [ ] 모든 파라미터에 `@Parameter(description = "...")` 있는가?
+- [ ] 선택적 파일에 `required = false` 명시했는가?
+- [ ] JSON 문자열에 `schema = @Schema(implementation = ...)` 있는가?
+- [ ] JSON 파싱 후 `Validator`로 수동 검증하는가?
+- [ ] 숫자 파싱 시 `try-catch`로 예외 처리하는가?
 
 ### DTO
 
@@ -459,10 +665,14 @@ sw-campus-api/
 
 | 금지 사항 | 이유 |
 |----------|------|
-| 모든 필드에 어노테이션 | 핵심 필드만 문서화 |
+| `@ModelAttribute` + `MultipartFile` | Swagger UI에서 파일 필드 표시 안됨 |
+| JSON 문자열에 `schema` 속성 누락 | Swagger에서 JSON 구조 표시 안됨 |
+| `@RequestPart` String 숫자 파싱 시 예외처리 누락 | NumberFormatException 발생 |
+| `@Valid` on `@RequestPart` String | 동작하지 않음, `Validator` 수동 검증 필요 |
+| 인증 API에 `@SecurityRequirement` 누락 | 프론트엔드가 인증 필요 여부 알 수 없음 |
+| description 없는 `@Operation` | 무의미한 문서 |
 | 영어 설명 | 한글로 명확하게 |
-| description 없는 @Operation | 무의미한 문서 |
-| 중복 설명 | DRY 원칙 위반 |
+| `required = false` 누락 (선택적 파일) | Swagger에서 필수로 표시됨 |
 
 ---
 
@@ -472,4 +682,7 @@ sw-campus-api/
 2. **description은 상세하게**: 필요시 사용법, 주의사항 포함
 3. **example은 실제 값처럼**: 의미 있는 예시 사용
 4. **에러 응답도 문서화**: 클라이언트가 에러 처리 가능하도록
-5. **인증 여부 명시**: 프론트엔드 개발 편의성
+5. **인증 여부 명시**: Class-level 또는 Method-level `@SecurityRequirement`
+6. **Multipart JSON은 schema 필수**: `@Parameter(schema = @Schema(implementation = ...))`
+7. **수동 검증 습관화**: `@RequestPart` String으로 받은 JSON은 `Validator` 사용
+8. **숫자 파싱은 안전하게**: try-catch + 의미 있는 에러 메시지
