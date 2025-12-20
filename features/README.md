@@ -115,6 +115,7 @@ features/
 | 기능 | 설명 | 상태 |
 |------|------|------|
 | [auth](./auth/) | 회원가입, 로그인, 로그아웃, 토큰 관리 | 🚧 진행중 |
+| [organization-signup](./organization-signup/) | 기관 회원가입 리팩토링 (기존 기관 선택, 승인/반려 워크플로우) | 🚀 배포됨 |
 | [review](./review/) | 후기 작성, 수정, 삭제, 수료증 인증, 관리자 승인 | 🚧 진행중 |
 | [survey](./survey/) | 사용자 설문조사 (LLM 추천용 데이터 수집) | ✅ 완료 |
 | [data-migration](./data-migration/) | 초기 데이터 구축 및 마이그레이션 (CSV to SQL) | 🚧 진행중 |
