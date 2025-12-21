@@ -112,7 +112,7 @@ PRD → Sequence → Spec → [구현] → Spec 업데이트
 | [compare](./compare/) | 강의 비교 | 🚧 진행중 |
 | [lecture](./lecture/) | 강의 관리 | 🚧 진행중 |
 | [wishlist](./wishlist/) | 찜 목록 | 🚧 진행중 |
-| [my-lecture-review-detail](./my-lecture-review-detail/) | 내 강의 후기 상세 조회 API | 🚧 진행중 |
+| [my-lecture-review-detail](./my-lecture-review-detail/) | 내 강의 후기 상세 조회 API | ✅ 완료 |
 
 ### 상태 범례
 - 📝 예정: 문서 없음

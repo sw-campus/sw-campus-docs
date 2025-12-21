@@ -107,17 +107,18 @@ WHERE r.member_id = :memberId AND r.lecture_id = :lectureId
 
 ## 구현 노트
 
-### 2025-12-21 - 초기 구현
+### 2025-12-21 - Review API 리팩토링 및 내 강의 후기 조회 추가
 
-**변경사항**:
-- `MypageController`에 `GET /completed-lectures/{lectureId}/review` 추가
-- `MypageController`에서 기존 `GET /reviews` 삭제
-- 테스트 코드 추가 및 정리
-
-**설계 결정**:
-- 초기에는 `/api/v1/reviews/my?lectureId={id}`로 구현했으나, 사용자 흐름(mypage → completed-lectures → review)에 맞게 `/api/v1/mypage/completed-lectures/{lectureId}/review`로 변경
-- Path Parameter 방식이 RESTful하고 리소스 계층 구조를 명확히 표현
-
-**Domain/Infra 레이어**:
-- 기존 `ReviewService.getMyReviewByLecture(memberId, lectureId)` 메서드 재사용
-- 추가 구현 불필요
+- **PR**: [#178](https://github.com/sw-campus/sw-campus-server/pull/178)
+- **주요 변경**:
+  - `MypageController`에 `GET /completed-lectures/{lectureId}/review` 추가
+  - `MypageController`에서 기존 `GET /reviews` 삭제
+  - `ReviewService`에 `getMyReviewWithNicknameByLecture` 메서드 추가 (코드 리뷰 반영)
+  - `AdminReviewController`를 Service 패턴으로 리팩토링
+  - 테스트 코드 추가 및 정리
+- **설계 결정**:
+  - 초기에는 `/api/v1/reviews/my?lectureId={id}`로 구현했으나, 사용자 흐름(mypage → completed-lectures → review)에 맞게 `/api/v1/mypage/completed-lectures/{lectureId}/review`로 변경
+  - Path Parameter 방식이 RESTful하고 리소스 계층 구조를 명확히 표현
+- **Domain/Infra 레이어**:
+  - 기존 `ReviewService.getMyReviewByLecture(memberId, lectureId)` 메서드 재사용
+  - 추가 구현 불필요
