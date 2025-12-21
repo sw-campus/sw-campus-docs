@@ -22,9 +22,11 @@
 | GET | `/api/v1/reviews/check?lectureId={id}` | 작성 가능 여부 확인 | USER |
 | POST | `/api/v1/reviews` | 후기 작성 | USER |
 | GET | `/api/v1/reviews/{reviewId}` | 후기 조회 | X |
-| PUT | `/api/v1/reviews/{reviewId}` | 후기 수정 | USER |
+| PUT | `/api/v1/reviews/{reviewId}` | 후기 수정 (PENDING/REJECTED만 가능) | USER |
 
 **후기 작성 조건**: 닉네임 설정 완료 + 수료증 인증 완료
+
+**후기 수정 조건**: APPROVED 상태가 아닌 후기만 수정 가능 (PENDING, REJECTED)
 
 ### 관리자 - 2단계 검토
 
@@ -128,11 +130,23 @@
 | REVIEW005 | 409 | 이미 후기 작성한 강의 |
 | REVIEW006 | 404 | 후기 없음 |
 | REVIEW007 | 403 | 본인 후기만 수정 가능 |
-| REVIEW008 | 400 | 승인된 후기는 수정 불가 |
+| REVIEW008 | 403 | 승인된 후기는 수정 불가 |
 
 ---
 
 ## 구현 노트
+
+### 2025-12-21 - 후기 수정 정책 변경 및 Swagger 문서 개선
+
+- PR: #188
+- 변경 사항:
+  - 후기 수정 가능 상태 확장: REJECTED만 → PENDING, REJECTED 모두 가능
+  - APPROVED 상태만 수정 불가로 정책 변경
+  - Swagger 문서에 5개 카테고리 전체 예시 추가
+  - Jackson 날짜 직렬화 설정 추가 (`WRITE_DATES_AS_TIMESTAMPS: false`)
+- 수정 이유:
+  - 마이페이지에서 PENDING 상태 후기 수정 시 에러 발생 문제 해결
+  - 프론트엔드 개발자를 위한 API 문서 가독성 향상
 
 ### 2025-12-21 - 관리자 전체 후기 목록 API 추가
 
