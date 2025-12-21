@@ -31,6 +31,7 @@
 | Method | Endpoint | 설명 | 인증 |
 |--------|----------|------|------|
 | GET | `/api/v1/admin/reviews` | 승인 대기 목록 | ADMIN |
+| GET | `/api/v1/admin/reviews/all` | 전체 후기 목록 (필터링/페이지네이션) | ADMIN |
 | GET | `/api/v1/admin/reviews/{id}/certificate` | 수료증 조회 (1단계) | ADMIN |
 | PATCH | `/api/v1/admin/certificates/{id}/approve` | 수료증 승인 | ADMIN |
 | PATCH | `/api/v1/admin/certificates/{id}/reject` | 수료증 반려 | ADMIN |
@@ -38,6 +39,19 @@
 | PATCH | `/api/v1/admin/reviews/{id}/approve` | 후기 승인 | ADMIN |
 | PATCH | `/api/v1/admin/reviews/{id}/reject` | 후기 반려 | ADMIN |
 | PATCH | `/api/v1/admin/reviews/{id}/blind` | 블라인드 처리 | ADMIN |
+
+#### 전체 후기 목록 API 상세
+
+**Endpoint**: `GET /api/v1/admin/reviews/all`
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|----------|------|------|------|
+| status | String | X | 승인 상태 필터 (PENDING, APPROVED, REJECTED) |
+| keyword | String | X | 강의명 검색 키워드 |
+| page | Integer | X | 페이지 번호 (기본값: 0) |
+| size | Integer | X | 페이지 크기 (기본값: 10) |
+
+**응답**: Spring `Page<AdminReviewSummary>` (totalElements, totalPages 등 페이지 메타정보 포함)
 
 ---
 
@@ -119,6 +133,19 @@
 ---
 
 ## 구현 노트
+
+### 2025-12-21 - 관리자 전체 후기 목록 API 추가
+
+- PR: #183
+- 추가된 API: `GET /api/v1/admin/reviews/all`
+- 주요 기능:
+  - 모든 상태의 후기 조회 (PENDING, APPROVED, REJECTED)
+  - 승인 상태 필터링
+  - 강의명 키워드 검색
+  - 페이지네이션 (page, size)
+- 특이사항:
+  - N+1 문제 방지를 위한 배치 조회 로직 적용
+  - 기존 `GET /reviews`(PENDING만 조회)와 별도 엔드포인트로 분리
 
 ### 2025-12-10 - 초기 구현
 
