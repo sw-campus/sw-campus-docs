@@ -108,3 +108,15 @@
 - `NumberFormatException` 처리 추가 (AuthController)
 - `RuntimeException` → `OrganizationNotFoundException` 변경
 - 승인 상태 체크 로직을 Controller → Service로 이동
+
+### 2025-12-21 - 재직증명서 Private Bucket 저장
+
+- **PR**: [#180](https://github.com/sw-campus/sw-campus-server/pull/180)
+- **변경 사유**: 재직증명서는 민감한 개인/기업 정보이므로 public bucket 대신 private bucket에 저장
+- **주요 변경**:
+  - `FileStorageService`에 `uploadPrivate()`, `deletePrivate()` 메서드 추가
+  - `S3FileStorageService`에 `aws.s3.private-bucket` 주입 및 구현
+  - `AuthService.signupOrganization()`에서 `uploadPrivate()` 사용
+  - `OrganizationService.updateOrganization()`에서도 certificate 업로드 시 private bucket 사용
+  - 저장 디렉토리: `certificates/`
+- **주의사항**: private bucket의 URL은 직접 접근 불가, pre-signed URL 생성 필요
