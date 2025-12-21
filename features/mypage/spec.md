@@ -19,6 +19,11 @@
 
 **수정 가능 필드**: nickname, phone, address
 
+**닉네임 수정 규칙**:
+- 최대 20자
+- 허용 문자: `a-z`, `A-Z`, `0-9`, `가-힣`, `-`, `_`
+- 대소문자 무시 중복 검사 (본인 제외)
+
 ### 일반 사용자 (USER)
 
 | Method | Endpoint | 설명 | 인증 |
@@ -79,10 +84,17 @@ if (lecture.getLectureAuthStatus() != LectureAuthStatus.REJECTED) {
 | ORGANIZATION_NOT_FOUND | 404 | 기관 정보 조회 실패 |
 | ACCESS_DENIED | 403 | 본인 소유가 아닌 리소스 접근 |
 | INVALID_ROLE | 403 | 해당 역할에서 사용할 수 없는 기능 |
+| NICKNAME_ALREADY_EXISTS | 409 | 이미 사용 중인 닉네임 |
 
 ---
 
 ## 구현 노트
+
+### 2025-12-21 - 닉네임 중복 검사 추가
+
+- PR: #186
+- 프로필 수정 시 닉네임 중복 검사 (본인 제외)
+- 닉네임 유효성 규칙 적용 (최대 20자, 허용 문자: a-zA-Z0-9가-힣_-)
 
 ### 2025-12-14 - 초기 구현
 

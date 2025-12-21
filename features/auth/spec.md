@@ -16,12 +16,25 @@
 | GET | `/api/v1/auth/email/verify?token={token}` | 인증 링크 확인 (302 리다이렉트) | X |
 | GET | `/api/v1/auth/email/status?email={email}` | 인증 상태 확인 | X |
 
+### 닉네임 중복 검사
+
+| Method | Endpoint | 설명 | 인증 |
+|--------|----------|------|------|
+| GET | `/api/v1/members/nickname/check?nickname={nickname}` | 닉네임 사용 가능 여부 확인 | X |
+
+**Response**: `{ "isAvailable": true/false }`
+
 ### 회원가입
 
 | Method | Endpoint | 설명 | 인증 |
 |--------|----------|------|------|
 | POST | `/api/v1/auth/signup` | 일반 사용자 회원가입 | X |
 | POST | `/api/v1/auth/signup/organization` | 기관 담당자 회원가입 (multipart) | X |
+
+**닉네임 규칙**:
+- 최대 20자
+- 허용 문자: `a-z`, `A-Z`, `0-9`, `가-힣`, `-`, `_`
+- 대소문자 무시 중복 검사 (ABC = abc)
 
 **기관 회원가입 필드**:
 | 필드 | 타입 | 필수 | 설명 |
@@ -135,10 +148,20 @@ public record MemberPrincipal(Long memberId, String email, Role role) {}
 | AUTH008 | 404 | 인증 정보 없음 |
 | AUTH009 | 400 | 현재 비밀번호 불일치 |
 | AUTH010 | 400 | 재설정 토큰 만료 |
+| NICKNAME_ALREADY_EXISTS | 409 | 이미 사용 중인 닉네임 |
 
 ---
 
 ## 구현 노트
+
+### 2025-12-21 - 닉네임 중복 검사 구현
+
+- PR: #186
+- 닉네임 사용 가능 여부 확인 API 추가 (`GET /api/v1/members/nickname/check`)
+- 회원가입 시 닉네임 중복 검사 (일반/기관)
+- 닉네임 유효성 규칙 추가 (최대 20자, 허용 문자: a-zA-Z0-9가-힣_-)
+- 대소문자 무시 중복 검사 (PostgreSQL `LOWER()` 인덱스)
+- DB 마이그레이션: V19__add_nickname_unique_constraint.sql
 
 ### 2025-12-14 - MemberPrincipal 도입
 
