@@ -162,6 +162,7 @@ public record MemberPrincipal(Long memberId, String email, Role role) {}
 - 닉네임 유효성 규칙 추가 (최대 20자, 허용 문자: a-zA-Z0-9가-힣_-)
 - 대소문자 무시 중복 검사 (PostgreSQL `LOWER()` 인덱스)
 - DB 마이그레이션: V19__add_nickname_unique_constraint.sql
+- MemberEntity nickname 필드에 `@Column(unique = true)` 추가
 
 ### 2025-12-14 - MemberPrincipal 도입
 
