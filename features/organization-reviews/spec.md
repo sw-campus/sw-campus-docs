@@ -216,3 +216,32 @@ export async function getOrganizationReviews(
   - Spring Data Page 응답 형식 사용 (content + page 메타데이터)
   - 기관에 속한 모든 강의의 후기를 조회하기 위해 EXISTS 서브쿼리 사용
   - N+1 문제 해결을 위해 닉네임 배치 로딩 적용
+
+### 코드 리뷰 피드백
+
+#### Backend PR #205
+
+| 피드백 | 대응 |
+|--------|------|
+| 테스트에서 기본 size 10 사용 (실제 기본값 6) | **수정 완료** - 기본값 테스트에서 size를 6으로 변경 |
+| Repository 메서드명 `WithPagination` 접미사 일관성 | **유지** - 기존 `findByOrganizationIdAndApprovalStatus`(List 반환)와 구분하기 위해 명시적 접미사 사용 |
+| application.yml multipart 설정 PR 목적과 무관 | **유지** - S3 이미지 업로드 기능 merge conflict 해결 과정에서 포함 |
+| docker-compose 포트 변경 PR 목적과 무관 | **유지** - 로컬 개발 환경 설정, merge conflict 해결 과정에서 포함 |
+| test-review-data.sql 파일 위치 오류 | **유지** - 수동 테스트용 파일로 staging 서버에서 직접 실행, 통합 테스트 미사용 |
+| Swagger example 값 10 (기본값 6) | **이미 수정됨** - example="6" 설정 완료 |
+| page/size 파라미터 입력 검증 없음 | **추후 반영** - Spring Data Pageable 자체 처리 활용, 추후 API 전반 입력 검증 일괄 적용 예정 |
+
+#### Frontend PR #76
+
+| 피드백 | 대응 |
+|--------|------|
+| bg.jpg → bg.png 변경 PR 목적과 무관 | **유지** - merge conflict 해결 과정에서 포함, 의도적 이미지 포맷 변경 |
+| PAGE_SIZE 상수 중복 (컴포넌트 + API 기본값) | **추후 반영** - 공통 상수로 분리 고려 |
+| 빈 페이지 처리 (리뷰 삭제/잘못된 페이지) | **추후 반영** - UX 개선 시 안내 메시지 추가 예정 |
+| 페이지네이션 버튼 aria-label 누락 | **수정 완료** - aria-label, aria-current 속성 추가 |
+| Select 컴포넌트 aria-label 누락 | **수정 완료** - aria-label="정렬 기준 선택" 추가 |
+
+#### 수정 커밋
+
+- Backend: `9055f90` - 테스트 기본 size 수정, ApprovalStatus import 경로 수정
+- Frontend: `2543124` - 페이지네이션 및 정렬 드롭다운 접근성 개선
