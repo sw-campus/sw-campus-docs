@@ -3,17 +3,18 @@
 ## 1. 개요
 
 ### 1.1 현재 상태
+
 - **DB**: PostgreSQL 16
 - **주요 테이블**: lectures (1,051건), reviews (60건), organizations (274건)
 - **문제점**: FK 컬럼에 인덱스 부재, 텍스트 검색 최적화 없음
 
 ### 1.2 최적화 효과 요약
 
-| 최적화 항목 | Before | After | 개선율 |
-|------------|--------|-------|--------|
-| 기관별 강의 조회 | Seq Scan (146 buffers) | Index Scan (47 buffers) | **68% 감소** |
-| 강의 상세 API | 4번 쿼리 | 1번 쿼리 (JOIN) | **75% 감소** |
-| 텍스트 검색 (희귀 키워드) | 1ms | 0.1ms | **10배 빠름** |
+| 최적화 항목               | Before                 | After                   | 개선율        |
+| ------------------------- | ---------------------- | ----------------------- | ------------- |
+| 기관별 강의 조회          | Seq Scan (146 buffers) | Index Scan (47 buffers) | **68% 감소**  |
+| 강의 상세 API             | 4번 쿼리               | 1번 쿼리 (JOIN)         | **75% 감소**  |
+| 텍스트 검색 (희귀 키워드) | 1ms                    | 0.1ms                   | **10배 빠름** |
 
 ---
 
@@ -33,6 +34,7 @@ PostgreSQL 기본 인덱스는 **B-Tree (Balanced Tree)** 자료구조 사용.
 ```
 
 **B-Tree 구조:**
+
 ```
                       [500]                        ← 레벨 0 (루트)
                      /     \
@@ -48,12 +50,12 @@ Full Table Scan = N (전체 행 수)
 Index Scan = log₂(N) + M (결과 행 수)
 ```
 
-| 데이터 규모 | Full Scan | Index Scan | 개선율 |
-|------------|-----------|------------|--------|
-| 1,000건 | 1,000번 | ~60번 | 17배 |
-| 10,000건 | 10,000번 | ~63번 | 159배 |
-| 100,000건 | 100,000번 | ~67번 | 1,493배 |
-| 1,000,000건 | 1,000,000번 | ~70번 | 14,286배 |
+| 데이터 규모 | Full Scan   | Index Scan | 개선율   |
+| ----------- | ----------- | ---------- | -------- |
+| 1,000건     | 1,000번     | ~60번      | 17배     |
+| 10,000건    | 10,000번    | ~63번      | 159배    |
+| 100,000건   | 100,000번   | ~67번      | 1,493배  |
+| 1,000,000건 | 1,000,000번 | ~70번      | 14,286배 |
 
 ---
 
@@ -62,12 +64,14 @@ Index Scan = log₂(N) + M (결과 행 수)
 ### 3.1 기관별 강의 조회 (lectures.org_id)
 
 **쿼리:**
+
 ```sql
 SELECT * FROM swcampus.lectures
 WHERE org_id = 82 AND lecture_auth_status = 'APPROVED';
 ```
 
 **Before (인덱스 없음):**
+
 ```
 Seq Scan on lectures  (cost=0.00..161.71 rows=64 width=1054) (actual time=0.062..0.258 rows=64 loops=1)
   Filter: ((org_id = 82) AND ((lecture_auth_status)::text = 'APPROVED'::text))
@@ -78,6 +82,7 @@ Execution Time: 0.272 ms
 ```
 
 **After (인덱스 추가):**
+
 ```
 Bitmap Heap Scan on lectures  (cost=4.77..121.94 rows=64 width=563) (actual time=0.032..0.083 rows=64 loops=1)
   Recheck Cond: (org_id = 82)
@@ -103,12 +108,14 @@ Execution Time: 0.104 ms
 ### 3.2 리뷰 조회 (reviews.lecture_id)
 
 **쿼리:**
+
 ```sql
 SELECT * FROM swcampus.reviews
 WHERE lecture_id = 1127 AND approval_status = 'APPROVED';
 ```
 
 **Before (인덱스 없음):**
+
 ```
 Seq Scan on reviews  (cost=0.00..5.90 rows=15 width=199) (actual time=0.008..0.018 rows=15 loops=1)
   Filter: ((lecture_id = 1127) AND ((approval_status)::text = 'APPROVED'::text))
@@ -119,6 +126,7 @@ Execution Time: 0.031 ms
 ```
 
 **분석:**
+
 - 현재 reviews 테이블이 60건으로 적어서 인덱스 효과 미미
 - PostgreSQL 옵티마이저가 "테이블이 작으면 Seq Scan이 더 효율적"이라고 판단
 - 데이터가 1,000건 이상 쌓이면 인덱스 효과 발생
@@ -128,6 +136,7 @@ Execution Time: 0.031 ms
 ### 3.3 텍스트 검색 (GIN + pg_trgm)
 
 **쿼리:**
+
 ```sql
 SELECT lecture_id, lecture_name
 FROM swcampus.lectures
@@ -135,6 +144,7 @@ WHERE lecture_name ILIKE '%블록체인%';
 ```
 
 **Before (인덱스 없음):**
+
 ```
 Seq Scan on lectures  (cost=0.00..159.14 rows=11 width=73) (actual time=0.027..1.050 rows=10 loops=1)
   Filter: ((lecture_name)::text ~~* '%블록체인%'::text)
@@ -145,6 +155,7 @@ Execution Time: 1.082 ms
 ```
 
 **After (GIN 인덱스 추가):**
+
 ```
 Bitmap Heap Scan on lectures  (cost=21.57..56.65 rows=11 width=73) (actual time=0.027..0.049 rows=10 loops=1)
   Recheck Cond: ((lecture_name)::text ~~* '%블록체인%'::text)
@@ -208,6 +219,7 @@ CREATE INDEX idx_organizations_name_trgm ON swcampus.organizations
 ```
 
 **GIN 인덱스 효과:**
+
 - B-Tree는 `LIKE '%keyword%'` 패턴에서 인덱스 사용 불가
 - GIN + pg_trgm은 부분 문자열 검색도 인덱스 사용 가능
 - 희귀한 키워드일수록 효과 큼 (결과가 전체의 10% 이하일 때)
@@ -219,6 +231,7 @@ CREATE INDEX idx_organizations_name_trgm ON swcampus.organizations
 ### 5.1 강의 상세 API JOIN 통합
 
 **현재 (4번 쿼리):**
+
 ```java
 // LectureController.java:164-167
 var lectureSummary = lectureService.getLectureWithStats(lectureId);  // 3번 쿼리
@@ -233,6 +246,7 @@ Long reviewCount = getReviewCountsByLectureIds(...);     // 쿼리 3: 리뷰 개
 ```
 
 **개선안 (1번 쿼리):**
+
 ```sql
 SELECT
     l.*,
@@ -250,6 +264,7 @@ GROUP BY l.lecture_id, o.org_id;
 ### 5.2 EXISTS → JOIN 변경
 
 **현재 (ReviewJpaRepository.java:29):**
+
 ```java
 @Query("SELECT r FROM ReviewEntity r LEFT JOIN FETCH r.details " +
        "WHERE EXISTS (SELECT 1 FROM LectureEntity l " +
@@ -258,6 +273,7 @@ GROUP BY l.lecture_id, o.org_id;
 ```
 
 **개선안:**
+
 ```java
 @Query("SELECT DISTINCT r FROM ReviewEntity r " +
        "LEFT JOIN FETCH r.details " +
@@ -270,13 +286,13 @@ GROUP BY l.lecture_id, o.org_id;
 
 ## 6. 인덱스 알고리즘 선택 가이드
 
-| 쿼리 패턴 | 권장 인덱스 | 예시 |
-|----------|------------|------|
-| `=`, `<`, `>`, `BETWEEN` | B-Tree | `WHERE org_id = 123` |
-| `LIKE 'prefix%'` | B-Tree | `WHERE name LIKE 'AI%'` |
-| `LIKE '%keyword%'` | GIN + pg_trgm | `WHERE name ILIKE '%블록체인%'` |
-| 시계열 범위 (대용량) | BRIN | `WHERE created_at BETWEEN ...` |
-| 배열, JSONB | GIN | `WHERE tags @> ARRAY['java']` |
+| 쿼리 패턴                | 권장 인덱스   | 예시                            |
+| ------------------------ | ------------- | ------------------------------- |
+| `=`, `<`, `>`, `BETWEEN` | B-Tree        | `WHERE org_id = 123`            |
+| `LIKE 'prefix%'`         | B-Tree        | `WHERE name LIKE 'AI%'`         |
+| `LIKE '%keyword%'`       | GIN + pg_trgm | `WHERE name ILIKE '%블록체인%'` |
+| 시계열 범위 (대용량)     | BRIN          | `WHERE created_at BETWEEN ...`  |
+| 배열, JSONB              | GIN           | `WHERE tags @> ARRAY['java']`   |
 
 ### PostgreSQL 옵티마이저 판단 기준
 
@@ -291,7 +307,85 @@ GROUP BY l.lecture_id, o.org_id;
 
 ---
 
-## 7. 마이그레이션 파일
+## 7. LIKE vs ILIKE 비교 가이드
+
+### 7.1 기본 비교
+
+| 특성                | `LIKE`                  | `ILIKE`                      |
+| ------------------- | ----------------------- | ---------------------------- |
+| **대소문자 구분**   | O (Case-sensitive)      | X (Case-insensitive)         |
+| **성능**            | 약간 더 빠름            | 약간 더 느림                 |
+| **인덱스 사용**     | B-tree 인덱스 사용 가능 | 일반 B-tree 인덱스 사용 불가 |
+| **PostgreSQL 전용** | X (표준 SQL)            | O (PostgreSQL 확장)          |
+
+### 7.2 언제 ILIKE를 사용할까?
+
+```
+✅ ILIKE 권장:
+- 사용자 검색 기능 (대소문자 무관하게 검색)
+- 데이터 일관성이 보장되지 않는 경우
+- UX 관점에서 유연한 검색이 필요할 때
+
+❌ LIKE 권장:
+- 정확한 대소문자 매칭이 필요한 경우
+- 코드, 식별자 등 정해진 포맷 검색
+- 외부 시스템과의 호환성이 중요한 경우
+```
+
+**예시:**
+
+```sql
+-- ILIKE: "spring", "Spring", "SPRING" 모두 매칭
+SELECT * FROM lectures WHERE lecture_name ILIKE '%spring%';
+
+-- LIKE: 정확히 "Spring"만 매칭
+SELECT * FROM lectures WHERE lecture_name LIKE '%Spring%';
+```
+
+### 7.3 ILIKE 인덱스 최적화
+
+일반 B-Tree 인덱스는 `ILIKE`에서 사용 불가. **pg_trgm + GIN 인덱스**로 해결:
+
+```sql
+-- pg_trgm 확장 설치
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- GIN 인덱스 생성
+CREATE INDEX idx_lectures_name_trgm ON swcampus.lectures
+    USING GIN (lecture_name gin_trgm_ops);
+
+-- 이제 ILIKE도 인덱스 활용 가능!
+SELECT * FROM lectures WHERE lecture_name ILIKE '%spring%';
+```
+
+### 7.4 대안: LOWER() 함수 + 함수 인덱스
+
+```sql
+-- 함수 인덱스 생성
+CREATE INDEX idx_lectures_name_lower ON swcampus.lectures (LOWER(lecture_name));
+
+-- LIKE 사용하되 양쪽 다 소문자 변환
+SELECT * FROM lectures
+WHERE LOWER(lecture_name) LIKE LOWER('%spring%');
+```
+
+**주의:** `LIKE '%keyword%'` 패턴에서는 함수 인덱스도 사용 불가.
+전방 일치(`LIKE 'keyword%'`)에서만 효과적.
+
+### 7.5 성능 비교 요약
+
+| 방식                | 인덱스 지원          | 성능 | 권장 상황      |
+| ------------------- | -------------------- | ---- | -------------- |
+| `LIKE 'prefix%'`    | B-Tree ✅            | 빠름 | 전방 일치 검색 |
+| `LIKE '%keyword%'`  | X                    | 느림 | 사용 자제      |
+| `ILIKE '%keyword%'` | GIN + pg_trgm ✅     | 보통 | 사용자 검색    |
+| `LOWER() + LIKE`    | 함수 인덱스 (제한적) | 보통 | 전방 일치만    |
+
+**결론:** 사용자 검색 기능에는 `ILIKE` + `pg_trgm 인덱스` 조합 권장.
+
+---
+
+## 8. 마이그레이션 파일
 
 **파일 위치:** `sw-campus-server/sw-campus-infra/db-postgres/src/main/resources/db/migration/V{N}__add_performance_indexes.sql`
 
@@ -337,9 +431,9 @@ CREATE INDEX IF NOT EXISTS idx_organizations_name_trgm
 
 ---
 
-## 8. 검증 방법
+## 9. 검증 방법
 
-### 8.1 EXPLAIN으로 인덱스 사용 확인
+### 9.1 EXPLAIN으로 인덱스 사용 확인
 
 ```sql
 -- 인덱스 사용 여부 확인
@@ -350,7 +444,7 @@ SELECT * FROM swcampus.lectures WHERE org_id = 82;
 -- 나쁜 결과: "Seq Scan"
 ```
 
-### 8.2 테이블별 스캔 통계 확인
+### 9.2 테이블별 스캔 통계 확인
 
 ```sql
 SELECT
@@ -364,7 +458,7 @@ WHERE schemaname = 'swcampus'
 ORDER BY seq_tup_read DESC;
 ```
 
-### 8.3 인덱스 목록 확인
+### 9.3 인덱스 목록 확인
 
 ```sql
 SELECT
@@ -378,9 +472,9 @@ ORDER BY tablename;
 
 ---
 
-## 9. 주의사항
+## 10. 주의사항
 
-### 9.1 인덱스 추가 시 고려사항
+### 10.1 인덱스 추가 시 고려사항
 
 ```
 ✅ 인덱스 추가 권장:
@@ -394,7 +488,7 @@ ORDER BY tablename;
 - 거의 사용되지 않는 컬럼
 ```
 
-### 9.2 PostgreSQL 특성
+### 10.2 PostgreSQL 특성
 
 ```
 - VARCHAR vs TEXT: 성능 차이 없음 (동일 저장 방식)
@@ -402,7 +496,7 @@ ORDER BY tablename;
 - 컬럼 크기 최적화보다 인덱스 최적화가 효과적
 ```
 
-### 9.3 인덱스 부작용
+### 10.3 인덱스 부작용
 
 ```
 인덱스 추가 시:
@@ -415,31 +509,31 @@ ORDER BY tablename;
 
 ---
 
-## 10. 참고: 현재 테이블 통계
+## 11. 참고: 현재 테이블 통계
 
-### 10.1 테이블별 데이터 수
+### 11.1 테이블별 데이터 수
 
-| 테이블 | 행 수 | 테이블 크기 | 평균 행 크기 |
-|--------|------|------------|------------|
-| lectures | 1,051 | 1,168 KB | 1,137 bytes |
-| reviews | 60 | 40 KB | 682 bytes |
-| reviews_details | 300 | 48 KB | 163 bytes |
-| organizations | 274 | 72 KB | - |
-| certificates | 60 | 40 KB | 682 bytes |
-| members | 19 | 8 KB | 431 bytes |
+| 테이블          | 행 수 | 테이블 크기 | 평균 행 크기 |
+| --------------- | ----- | ----------- | ------------ |
+| lectures        | 1,051 | 1,168 KB    | 1,137 bytes  |
+| reviews         | 60    | 40 KB       | 682 bytes    |
+| reviews_details | 300   | 48 KB       | 163 bytes    |
+| organizations   | 274   | 72 KB       | -            |
+| certificates    | 60    | 40 KB       | 682 bytes    |
+| members         | 19    | 8 KB        | 431 bytes    |
 
-### 10.2 테이블 스캔 현황 (최적화 전)
+### 11.2 테이블 스캔 현황 (최적화 전)
 
-| 테이블 | Seq Scan 횟수 | 읽은 행 수 | 문제점 |
-|--------|--------------|-----------|--------|
-| lecture_curriculums | 159 | 1,671,462 | 40행을 167만번 읽음 |
-| reviews | 4,599 | 163,917 | 60행을 16만번 읽음 |
-| lectures | 142 | 149,319 | - |
+| 테이블              | Seq Scan 횟수 | 읽은 행 수 | 문제점              |
+| ------------------- | ------------- | ---------- | ------------------- |
+| lecture_curriculums | 159           | 1,671,462  | 40행을 167만번 읽음 |
+| reviews             | 4,599         | 163,917    | 60행을 16만번 읽음  |
+| lectures            | 142           | 149,319    | -                   |
 
 ---
 
-## 11. 변경 이력
+## 12. 변경 이력
 
-| 날짜 | 작성자 | 내용 |
-|-----|--------|------|
-| 2025-12-26 | - | 최초 작성 |
+| 날짜       | 작성자 | 내용      |
+| ---------- | ------ | --------- |
+| 2025-12-26 | -      | 최초 작성 |
