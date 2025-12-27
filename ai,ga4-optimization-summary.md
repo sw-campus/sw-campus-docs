@@ -15,6 +15,8 @@
 | AI 비교           | TanStack Query 캐싱         | 재비교 시 즉시 응답       |
 | **GA4 Analytics** | CompletableFuture 병렬 호출 | 1.5초 → 0.5초 (3배 개선)  |
 | **GA4 Analytics** | Caffeine 캐시 (5분 TTL)     | 캐시 히트 시 <10ms        |
+| **Redis 캐시**    | MGET 벌크 조회              | N회 → 1회 네트워크 왕복   |
+| **Redis 캐시**    | Pipeline 벌크 저장          | N회 → 1회 네트워크 왕복   |
 
 ---
 
@@ -221,3 +223,55 @@ public class AnalyticsService {
 | **PostgreSQL** | **엄격함** (모든 SELECT 컬럼이 GROUP BY에 포함되거나 집계함수 안에 있어야 함) |
 
 > LEFT JOIN FETCH는 연관 엔티티의 모든 컬럼을 SELECT에 포함시키므로, `GROUP BY l`만으로는 PostgreSQL 규칙을 충족할 수 없어 쿼리를 분리함.
+
+---
+
+## Redis 캐시 최적화
+
+### 문제점
+
+기존 `getLectures()` 메서드가 반복문 안에서 각 강의 ID에 대해 `getLecture()`를 호출하여 **강의 수만큼 Redis 네트워크 왕복** 발생:
+
+```java
+// Before: N번의 네트워크 왕복
+for (Long id : lectureIds) {
+    getLecture(id).ifPresent(lecture -> result.put(id, lecture));
+}
+```
+
+### 해결: MGET 벌크 조회
+
+한 번의 MGET 명령으로 모든 키를 조회:
+
+```java
+// After: 1번의 네트워크 왕복 (MGET 명령)
+List<String> keys = lectureIds.stream()
+        .map(this::getKey)
+        .toList();
+List<Object> values = redisTemplate.opsForValue().multiGet(keys);
+```
+
+### 해결: Pipeline 벌크 저장
+
+```java
+// Before: N번의 네트워크 왕복
+for (Lecture lecture : lectures) {
+    saveLecture(lecture);
+}
+
+// After: 1번의 네트워크 왕복 (Pipeline)
+redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+    for (Lecture lecture : lectures) {
+        connection.stringCommands().setEx(keyBytes, TTL_MINUTES * 60, valueBytes);
+    }
+    return null;
+});
+```
+
+### 성능 개선 결과
+
+| 시나리오           | Before         | After         |
+| ------------------ | -------------- | ------------- |
+| 10개 강의 조회     | 10번 왕복      | **1번 왕복**  |
+| 100개 강의 조회    | 100번 왕복     | **1번 왕복**  |
+| 10개 강의 저장     | 10번 왕복      | **1번 왕복**  |
