@@ -115,6 +115,7 @@ PRD → Sequence → Spec → [구현] → Spec 업데이트
 | [my-lecture-review-detail](./my-lecture-review-detail/) | 내 강의 후기 상세 조회 API | ✅ 완료 |
 | [s3-key-migration](./s3-key-migration/) | S3 Key 기반 아키텍처 마이그레이션 | ✅ 완료 |
 | [organization-reviews](./organization-reviews/) | 기관별 후기 페이지네이션 | ✅ 완료 |
+| [certificate-ocr-matching](./certificate-ocr-matching/) | 수료증 OCR 다단계 강의명 매칭 검증 | ✅ 완료 |
 
 ### 상태 범례
 - 📝 예정: 문서 없음
