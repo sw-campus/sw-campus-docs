@@ -507,16 +507,142 @@ public record UserResponse(
 @Schema(description = "에러 응답")
 public record ErrorResponse(
 
-    @Schema(description = "에러 코드", example = "USER_NOT_FOUND")
-    String code,
+    @Schema(description = "HTTP 상태 코드", example = "400")
+    int status,
 
-    @Schema(description = "에러 메시지", example = "사용자를 찾을 수 없습니다")
+    @Schema(description = "에러 메시지", example = "잘못된 요청입니다")
     String message,
 
-    @Schema(description = "발생 시각", example = "2025-12-01T10:30:00")
+    @Schema(description = "발생 시각", example = "2025-12-09T12:00:00")
     LocalDateTime timestamp
 
 ) {}
+```
+
+---
+
+## ⚠️ 에러 응답 문서화 (중요)
+
+> **필수**: 모든 에러 응답(400, 401, 403, 404, 409 등)에는 반드시 `content`와 `examples`를 추가해야 합니다.
+> 이를 통해 Swagger UI에서 실제 에러 응답의 형태와 예시 메시지를 확인할 수 있습니다.
+
+### ❌ 잘못된 패턴 (examples 없음)
+
+```java
+@ApiResponses({
+    @ApiResponse(responseCode = "200", description = "조회 성공"),
+    @ApiResponse(responseCode = "401", description = "인증 필요"),  // ❌ content 없음
+    @ApiResponse(responseCode = "403", description = "권한 없음")   // ❌ content 없음
+})
+```
+
+위 패턴은 Swagger에서 에러 응답의 실제 형태를 보여주지 않아, 클라이언트 개발자가 에러 처리를 어떻게 해야 할지 알기 어렵습니다.
+
+### ✅ 올바른 패턴 (content + examples 포함)
+
+```java
+import com.swcampus.api.exception.ErrorResponse;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@ApiResponses({
+    @ApiResponse(responseCode = "200", description = "조회 성공"),
+    @ApiResponse(responseCode = "401", description = "인증 필요",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+            examples = @ExampleObject(value = """
+                {"status": 401, "message": "인증이 필요합니다", "timestamp": "2025-12-09T12:00:00"}
+                """))),
+    @ApiResponse(responseCode = "403", description = "권한 없음",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+            examples = @ExampleObject(value = """
+                {"status": 403, "message": "접근 권한이 없습니다", "timestamp": "2025-12-09T12:00:00"}
+                """)))
+})
+```
+
+### 상황별 에러 메시지 예시
+
+| 응답 코드 | 상황 | 메시지 예시 |
+|-----------|------|-------------|
+| 400 | 유효성 검증 실패 | `잘못된 요청입니다` |
+| 400 | 비밀번호 불일치 | `현재 비밀번호가 일치하지 않습니다` |
+| 400 | 데이터 형식 오류 | `강의명이 일치하지 않습니다` |
+| 401 | 인증 필요 | `인증이 필요합니다` |
+| 403 | 권한 없음 (일반) | `접근 권한이 없습니다` |
+| 403 | 관리자 전용 | `관리자 권한이 필요합니다` |
+| 403 | 일반 사용자 전용 | `일반 사용자만 접근할 수 있습니다` |
+| 403 | 기관 회원 전용 | `기관 회원만 접근할 수 있습니다` |
+| 404 | 리소스 없음 (일반) | `리소스를 찾을 수 없습니다` |
+| 404 | 특정 리소스 없음 | `강의를 찾을 수 없습니다`, `사용자를 찾을 수 없습니다` |
+| 409 | 중복 | `이미 존재합니다`, `이미 장바구니에 존재합니다` |
+
+### 전체 예시 (Controller)
+
+```java
+@RestController
+@RequestMapping("/api/v1/mypage")
+@RequiredArgsConstructor
+@Tag(name = "마이페이지", description = "마이페이지 관련 API")
+@SecurityRequirement(name = "cookieAuth")
+public class MypageController {
+
+    @Operation(summary = "설문조사 조회", description = "강의 추천을 위한 설문조사 정보를 조회합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공"),
+        @ApiResponse(responseCode = "401", description = "인증 필요",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = """
+                    {"status": 401, "message": "인증이 필요합니다", "timestamp": "2025-12-09T12:00:00"}
+                    """))),
+        @ApiResponse(responseCode = "403", description = "일반 사용자가 아님",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = """
+                    {"status": 403, "message": "일반 사용자만 접근할 수 있습니다", "timestamp": "2025-12-09T12:00:00"}
+                    """)))
+    })
+    @GetMapping("/survey")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<SurveyResponse> getSurvey(@CurrentMember MemberPrincipal member) {
+        // ...
+    }
+
+    @Operation(summary = "설문조사 저장", description = "설문조사 정보를 저장합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "저장 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = """
+                    {"status": 400, "message": "잘못된 요청입니다", "timestamp": "2025-12-09T12:00:00"}
+                    """))),
+        @ApiResponse(responseCode = "401", description = "인증 필요",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = """
+                    {"status": 401, "message": "인증이 필요합니다", "timestamp": "2025-12-09T12:00:00"}
+                    """))),
+        @ApiResponse(responseCode = "403", description = "일반 사용자가 아님",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = """
+                    {"status": 403, "message": "일반 사용자만 접근할 수 있습니다", "timestamp": "2025-12-09T12:00:00"}
+                    """)))
+    })
+    @PutMapping("/survey")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<Void> saveSurvey(...) {
+        // ...
+    }
+}
+```
+
+### 필수 Import
+
+```java
+import com.swcampus.api.exception.ErrorResponse;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 ```
 
 ---
