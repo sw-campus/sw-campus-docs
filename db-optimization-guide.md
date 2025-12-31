@@ -532,7 +532,83 @@ ORDER BY tablename;
 
 ---
 
-## 12. 변경 이력
+## 12. CompletableFuture vs WebFlux 개념 비교
+
+### 12.1 CompletableFuture는 WebFlux가 아닙니다!
+
+많은 개발자들이 CompletableFuture와 WebFlux를 혼동하는데, 두 기술은 **완전히 다른 목적과 복잡도**를 가지고 있습니다.
+
+| 구분               | CompletableFuture             | WebFlux (Reactor)                  |
+| :----------------- | :---------------------------- | :--------------------------------- |
+| **도입 시점**      | Java 8 (2014년)               | Spring 5 (2017년)                  |
+| **패러다임**       | 비동기 처리 유틸리티          | 리액티브 스트림 프레임워크         |
+| **복잡도**         | 쉬움 ✅                       | 어려움 ❌                          |
+| **현업 사용**      | 매우 많이 사용                | 제한적 사용                        |
+| **학습 곡선**      | 낮음 (3가지 메서드만 알면 됨) | 높음 (Mono, Flux, backpressure 등) |
+| **기존 코드 호환** | 기존 동기 코드에 쉽게 적용    | 전체 앱을 리액티브로 전환 필요     |
+| **디버깅**         | 쉬움 (일반 스택 트레이스)     | 어려움 (비동기 스택 트레이스)      |
+
+### 12.2 CompletableFuture 핵심 패턴 (3가지만 기억하세요)
+
+```java
+// 1. 비동기 작업 시작
+CompletableFuture<Result> future = CompletableFuture.supplyAsync(() -> {
+    return someSlowOperation();
+});
+
+// 2. 여러 작업 동시 실행 후 대기
+CompletableFuture.allOf(future1, future2, future3).join();
+
+// 3. 결과 가져오기
+Result result = future.join();
+```
+
+### 12.3 WebFlux가 어려운 이유
+
+```java
+// WebFlux 코드 - 전체 앱이 리액티브해야 함
+return webClient.get()
+    .uri("/api1")
+    .retrieve()
+    .bodyToMono(A.class)
+    .flatMap(a -> webClient.get()
+        .uri("/api2/" + a.getId())
+        .retrieve()
+        .bodyToMono(B.class))
+    .zipWith(...)
+    .onErrorResume(e -> Mono.empty())
+    .subscribeOn(Schedulers.parallel());
+
+// 문제점:
+// 1. 콜백 지옥 비슷한 구조
+// 2. 디버깅이 매우 어려움
+// 3. 팀 전체가 리액티브 프로그래밍을 알아야 함
+// 4. 기존 동기 라이브러리와 호환 어려움
+```
+
+### 12.4 현업에서의 사용 현황
+
+- **CompletableFuture**:
+
+  - 여러 외부 API를 병렬 호출할 때 **필수적으로 사용**
+  - Java 표준 라이브러리라 별도 학습 비용 낮음
+  - 대부분의 Spring MVC 프로젝트에서 사용 가능
+
+- **WebFlux**:
+  - 높은 동시 연결 처리 (예: 실시간 채팅, 스트리밍)
+  - Netflix, Kakao 등 대규모 트래픽 처리 팀에서 사용
+  - 팀 전체 학습 비용과 마이그레이션 비용이 큼
+
+### 12.5 결론
+
+> **CompletableFuture는 "단순히 여러 작업을 동시에 실행"하는 유틸리티입니다.**
+>
+> WebFlux처럼 복잡한 리액티브 프로그래밍이 아니며, 현업에서도 매우 많이 사용됩니다.
+> 기존 Spring MVC 프로젝트에서 외부 API 병렬 호출 시 가장 좋은 선택입니다.
+
+---
+
+## 13. 변경 이력
 
 | 날짜       | 작성자 | 내용      |
 | ---------- | ------ | --------- |
