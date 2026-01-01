@@ -136,6 +136,20 @@
 
 ## 구현 노트
 
+### 2025-01-01 - OCR 기능 일시 비활성화
+
+- 배경: OCR 서버 CPU 사용량 최적화 필요
+- 변경: `certificate.ocr.enabled=false` 설정으로 OCR 검증 우회
+- 영향:
+  - 이미지 업로드만으로 수료증 인증 완료
+  - 에러 코드 CERT003(OCR 실패), CERT004(강의명 불일치) 미발생
+  - 관리자 수료증 검토 프로세스는 그대로 유지
+- 복구: `certificate.ocr.enabled=true`로 변경 시 OCR 재활성화
+- 관련 파일:
+  - `CertificateService.java` - OCR 토글 로직
+  - `application-*.yml` - 환경별 설정
+  - `CertificateServiceTest.java` - OCR 관련 테스트 @Disabled 처리
+
 ### 2025-12-21 - 후기 수정 정책 변경 및 Swagger 문서 개선
 
 - PR: #188

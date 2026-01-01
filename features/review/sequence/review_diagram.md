@@ -35,6 +35,10 @@ sequenceDiagram
 
 ## 1. 수료증 인증
 
+> **Note (2025-01-01)**: OCR 기능 일시 비활성화 (`certificate.ocr.enabled=false`)
+> - OCR 서버 호출 단계가 스킵됨 (다이어그램에서 점선 처리)
+> - 이미지 업로드만으로 수료증 인증 완료
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -42,7 +46,7 @@ sequenceDiagram
     participant Frontend as 프론트엔드<br/>(넷스트)
     participant Backend as 백엔드<br/>(Spring)
     participant S3 as S3
-    participant OCR as OCR 서버
+    participant OCR as OCR 서버<br/>(비활성화)
     participant DB as Database
 
     User->>Frontend: 후기 작성 버튼 클릭
@@ -57,21 +61,13 @@ sequenceDiagram
         Frontend->>Backend: POST /api/certificates/verify<br/>(이미지 포함)
         Backend->>S3: 수료증 이미지 업로드
         S3-->>Backend: 이미지 URL 반환
-        Backend->>OCR: 이미지 OCR 분석 요청
-        OCR-->>Backend: OCR 결과 반환 (강의명 등)
-        
-        Note over Backend: 강의명 매칭 검증
 
-        alt 인증 성공
-            Backend->>DB: 수료증 인증 정보 저장<br/>(certified: true, imageUrl)
-            DB-->>Backend: 저장 완료
-            Backend-->>Frontend: 인증 성공 응답
-            Frontend-->>User: 후기 작성 폼 표시
-        else 인증 실패 (OCR 실패 / 강의명 불일치)
-            Backend->>S3: 업로드된 이미지 삭제
-            Backend-->>Frontend: 400 Bad Request
-            Frontend-->>User: 에러 메시지 표시<br/>("해당 강의의 수료증이 아닙니다")
-        end
+        Note over Backend,OCR: [OCR 비활성화] OCR 검증 스킵
+
+        Backend->>DB: 수료증 인증 정보 저장<br/>(certified: true, imageUrl)
+        DB-->>Backend: 저장 완료
+        Backend-->>Frontend: 인증 성공 응답
+        Frontend-->>User: 후기 작성 폼 표시
 
     else 수료증 이미 인증됨
         Backend-->>Frontend: 인증 완료 응답
@@ -188,7 +184,7 @@ sequenceDiagram
     end
 
     rect rgb(255, 230, 200)
-        Note over User, DB: 1. 수료증 인증
+        Note over User, DB: 1. 수료증 인증 (OCR 비활성화)
         Frontend->>Backend: 수료증 인증 확인
         Backend->>DB: 인증 여부 조회
         DB-->>Backend: 미인증
@@ -197,8 +193,7 @@ sequenceDiagram
         Frontend->>Backend: 인증 요청
         Backend->>S3: 이미지 업로드
         S3-->>Backend: 이미지 URL 반환
-        Backend->>OCR: OCR 분석
-        OCR-->>Backend: 강의명 반환
+        Note over Backend,OCR: [OCR 스킵]
         Backend->>DB: 인증 정보 저장<br/>(certified, imageUrl)
         Backend-->>Frontend: 인증 성공
     end
