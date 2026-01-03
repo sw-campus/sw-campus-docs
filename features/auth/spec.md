@@ -1,178 +1,150 @@
 # 인증 (Auth) Spec
 
-## 개요
+## 설계 결정
 
-회원가입, 로그인, 로그아웃, 토큰 관리, 비밀번호 변경/찾기 기능의 기술 명세입니다.
+### 왜 JWT를 HttpOnly Cookie에 저장하는가?
 
----
+XSS 공격 방지. JavaScript에서 토큰 접근 불가.
 
-## API
+| 저장 방식 | XSS 취약 | CSRF 취약 | 선택 |
+|-----------|:--------:|:---------:|:----:|
+| localStorage | O | X | X |
+| HttpOnly Cookie | X | O (SameSite로 방어) | O |
 
-### 이메일 인증
+추가 보안 설정:
+- `SameSite: Strict` - CSRF 방어
+- `Secure: true` - HTTPS 전용 (prod)
 
-| Method | Endpoint | 설명 | 인증 |
-|--------|----------|------|------|
-| POST | `/api/v1/auth/email/send` | 인증 메일 발송 | X |
-| GET | `/api/v1/auth/email/verify?token={token}` | 인증 링크 확인 (302 리다이렉트) | X |
-| GET | `/api/v1/auth/email/status?email={email}` | 인증 상태 확인 | X |
+### 왜 동시 로그인을 제한하는가?
 
-### 닉네임 중복 검사
+계정 공유 방지 및 보안 강화.
 
-| Method | Endpoint | 설명 | 인증 |
-|--------|----------|------|------|
-| GET | `/api/v1/members/nickname/check?nickname={nickname}` | 닉네임 사용 가능 여부 확인 | X |
+- `REFRESH_TOKENS.USER_ID`에 UNIQUE 제약
+- 새 로그인 시 기존 토큰 자동 삭제
+- 사용자당 1개 세션만 유지
 
-**Response**: `{ "isAvailable": true/false }`
+### 왜 Access Token 1시간, Refresh Token 1일인가?
 
-### 회원가입
+보안과 사용성의 균형.
 
-| Method | Endpoint | 설명 | 인증 |
-|--------|----------|------|------|
-| POST | `/api/v1/auth/signup` | 일반 사용자 회원가입 | X |
-| POST | `/api/v1/auth/signup/organization` | 기관 담당자 회원가입 (multipart) | X |
-
-**닉네임 규칙**:
-- 최대 20자
-- 허용 문자: `a-z`, `A-Z`, `0-9`, `가-힣`, `-`, `_`
-- 대소문자 무시 중복 검사 (ABC = abc)
-
-**기관 회원가입 필드**:
-| 필드 | 타입 | 필수 | 설명 |
-|------|------|------|------|
-| email, password, name, nickname, phone, location | string | O | 기본 정보 |
-| certificateImage | file | O | 재직증명서 이미지 |
-| organizationId | string | X | 기존 기관 선택 시 |
-
-### 소셜 인증
-
-| Method | Endpoint | 설명 | 인증 |
-|--------|----------|------|------|
-| POST | `/api/v1/auth/oauth/{provider}` | 소셜 로그인/회원가입 | X |
-
-**Provider**: `google`, `github`
-
-### 로그인/로그아웃
-
-| Method | Endpoint | 설명 | 인증 |
-|--------|----------|------|------|
-| POST | `/api/v1/auth/login` | 이메일 로그인 | X |
-| POST | `/api/v1/auth/logout` | 로그아웃 | O |
-| POST | `/api/v1/auth/refresh` | Access Token 갱신 | X (Cookie) |
-
-### 비밀번호
-
-| Method | Endpoint | 설명 | 인증 |
-|--------|----------|------|------|
-| PATCH | `/api/v1/auth/password` | 비밀번호 변경 | O |
-| POST | `/api/v1/auth/password/reset-request` | 재설정 메일 요청 | X |
-| POST | `/api/v1/auth/password/reset` | 비밀번호 재설정 | X |
-
----
-
-## DB 스키마
-
-### MEMBERS (기존)
-
-| 컬럼 | 타입 | 설명 |
+| 토큰 | 만료 | 이유 |
 |------|------|------|
-| USER_ID | BIGSERIAL PK | 사용자 ID |
-| EMAIL | VARCHAR(255) UNIQUE | 이메일 |
-| PASSWORD | VARCHAR(255) | 비밀번호 (BCrypt) |
-| NAME, NICKNAME | VARCHAR(255) | 이름, 닉네임 |
-| PHONE, LOCATION | VARCHAR(255) | 연락처, 주소 |
-| ROLE | ENUM | USER, ORGANIZATION, ADMIN |
-| ORG_ID | INTEGER | 기관 ID (기관 담당자) |
+| Access | 1시간 | 탈취 시 피해 최소화 |
+| Refresh | 1일 | 하루 한 번 재로그인으로 사용성 유지 |
 
-### 추가 테이블
+Refresh 시 Access Token만 갱신, Refresh Token은 유지 (Sliding Session 아님).
 
-| 테이블 | 주요 컬럼 | 설명 |
-|--------|----------|------|
-| REFRESH_TOKENS | USER_ID (UNIQUE), TOKEN, EXPIRES_AT | Refresh Token 저장 |
-| EMAIL_VERIFICATIONS | EMAIL, TOKEN, VERIFIED, EXPIRES_AT | 이메일 인증 |
-| SOCIAL_ACCOUNTS | USER_ID, PROVIDER, PROVIDER_ID | 소셜 계정 연동 |
-| PASSWORD_RESET_TOKENS | USER_ID, TOKEN, EXPIRES_AT, USED | 비밀번호 재설정 |
+### 왜 닉네임 중복 검사에 LOWER 인덱스를 사용하는가?
 
----
+대소문자 혼동 방지. `ABC`와 `abc`를 동일 닉네임으로 취급.
 
-## 보안 설계
-
-### JWT 설정
-
-| 항목 | Access Token | Refresh Token |
-|------|-------------|---------------|
-| 만료 시간 | 1시간 | 1일 |
-| 알고리즘 | HS256 | HS256 |
-| 저장 위치 | HttpOnly Cookie | HttpOnly Cookie |
-
-### Cookie 설정
-
-```
-HttpOnly: true
-Secure: true (HTTPS)
-SameSite: Strict
-Path: /
+```sql
+CREATE UNIQUE INDEX members_nickname_lower_key
+ON swcampus.members (LOWER(nickname))
+WHERE nickname IS NOT NULL;
 ```
 
-### 비밀번호 정책
+PostgreSQL 함수 기반 인덱스로 대소문자 무시 검색 성능 보장.
 
-- 최소 8자
-- 특수문자 1개 이상 필수
-- BCrypt (strength: 10)
+### 왜 이메일 인증을 필수로 하는가?
 
-### 동시 로그인 제한
+허위 계정 방지 및 비밀번호 찾기 기능 보장.
 
-- `REFRESH_TOKENS.USER_ID` UNIQUE 제약으로 사용자당 1개 토큰만 유지
-- 새 로그인 시 기존 토큰 삭제
+- 회원가입 전 이메일 인증 완료 필수
+- 인증 완료된 이메일만 가입 가능
+- 비밀번호 찾기 시 검증된 이메일로 발송
 
-### MemberPrincipal
+### 왜 OAuth에서 state 파라미터를 사용하는가?
 
-```java
-public record MemberPrincipal(Long memberId, String email, Role role) {}
+CSRF 공격 방지.
+
+```
+1. 클라이언트: UUID 생성 → sessionStorage 저장 → OAuth URL에 state 포함
+2. OAuth Provider: 인증 후 state 그대로 반환
+3. 클라이언트: sessionStorage의 state와 비교 → 불일치 시 거부
 ```
 
-**@CurrentMember 어노테이션**: `@AuthenticationPrincipal` 래퍼, Swagger 자동 숨김
+### 왜 기관 담당자는 승인 전에도 로그인 가능한가?
 
----
+UX 고려. 승인 대기 중에도 서비스 탐색 가능.
 
-## 에러 코드
+| 상태 | 로그인 | 강의 등록 |
+|------|:------:|:---------:|
+| PENDING | O | X |
+| APPROVED | O | O |
+| REJECTED | O | X |
 
-| 코드 | HTTP | 설명 |
-|------|------|------|
-| AUTH001 | 400 | 이메일 형식 오류 |
-| AUTH002 | 400 | 비밀번호 형식 오류 (8자+, 특수문자 1+) |
-| AUTH003 | 401 | 이메일/비밀번호 불일치 |
-| AUTH004 | 401 | 토큰 만료 |
-| AUTH005 | 401 | 유효하지 않은 토큰 |
-| AUTH006 | 403 | 이메일 인증 미완료 |
-| AUTH007 | 409 | 이미 가입된 이메일 |
-| AUTH008 | 404 | 인증 정보 없음 |
-| AUTH009 | 400 | 현재 비밀번호 불일치 |
-| AUTH010 | 400 | 재설정 토큰 만료 |
-| NICKNAME_ALREADY_EXISTS | 409 | 이미 사용 중인 닉네임 |
+승인 상태는 `Organization.approvalStatus`에서 관리.
 
 ---
 
 ## 구현 노트
 
-### 2025-12-21 - 닉네임 중복 검사 구현
+### 2025-12-21 - 닉네임 중복 검사 구현 [Server]
 
 - PR: #186
-- 닉네임 사용 가능 여부 확인 API 추가 (`GET /api/v1/members/nickname/check`)
-- 회원가입 시 닉네임 중복 검사 (일반/기관)
-- 닉네임 유효성 규칙 추가 (최대 20자, 허용 문자: a-zA-Z0-9가-힣_-)
-- 대소문자 무시 중복 검사 (PostgreSQL `LOWER()` 인덱스)
-- DB 마이그레이션: V19__add_nickname_unique_constraint.sql
-- MemberEntity nickname 필드에 `@Column(unique = true)` 추가
+- 배경: 닉네임 중복으로 인한 혼란 방지
+- 변경:
+  - `GET /api/v1/members/nickname/check` API 추가
+  - PostgreSQL `LOWER()` 인덱스로 대소문자 무시
+  - 회원가입 시 중복 검사 강제
+- 관련: `MemberService.java`, `V19__add_nickname_unique_constraint.sql`
 
-### 2025-12-14 - MemberPrincipal 도입
+### 2025-12-21 - 닉네임 중복 검사 UI [Client]
 
-- Spring Security 표준 준수
-- `@CurrentMember` 커스텀 어노테이션 도입
-- Swagger 문서에서 자동 숨김 처리
+- 배경: 회원가입 시 사용 가능한 닉네임 확인 필요
+- 변경:
+  - `NickNameInput.tsx` 컴포넌트 추가
+  - 3가지 상태 UI (available/unavailable/error)
+  - 회원가입 전 중복 검사 필수
+- 관련: `useSignupForm.ts`, `NickNameInput.tsx`
 
-### 2025-12-05 - 초기 구현
+### 2025-12-14 - MemberPrincipal 도입 [Server]
 
+- 배경: Spring Security 표준 준수
+- 변경:
+  - `MemberPrincipal` record 도입
+  - `@CurrentMember` 커스텀 어노테이션
+  - Swagger 문서에서 자동 숨김 처리
+
+### 2025-12-10 - 토큰 자동 갱신 구현 [Client]
+
+- 배경: 토큰 만료 시 사용자 경험 개선
+- 변경:
+  - Axios 인터셉터로 401 감지
+  - 자동 refresh 및 원래 요청 재시도
+  - 중복 refresh 방지 (isRefreshing 플래그)
+- 관련: `axios.ts`
+
+### 2025-12-05 - 초기 구현 [Server][Client]
+
+**Server:**
 - 이메일 인증, 회원가입, 로그인/로그아웃
 - JWT 기반 인증 (HttpOnly Cookie)
-- OAuth (Google, GitHub) 연동
+- OAuth 연동 (Google, GitHub)
 - 비밀번호 변경/재설정
+- 동시 로그인 제한
+
+**Client:**
+- 로그인/로그아웃 UI (Zustand 상태 관리)
+- OAuth 플로우 (Google, GitHub)
+- 이메일 인증 (폴링 방식)
+- 비밀번호 찾기 (`FindPasswordModal` - 임시 비밀번호 발급)
+- 비밀번호 변경 (`PasswordChangeModal` - 마이페이지)
+- 비밀번호 검증 (`PasswordVerifyModal` - 개인정보 수정 전)
+- AdminGuard (관리자 라우트 보호)
+
+**OAuth 사용자 특별 처리:**
+- 비밀번호 찾기/변경 불가 (Server 예외 처리)
+- 비밀번호 검증 자동 통과 (비밀번호 없음)
+- UI에서 비밀번호 변경 버튼 숨김
+
+---
+
+## 미구현 사항
+
+| 기능 | 상태 | 비고 |
+|------|:----:|------|
+| 마이페이지 라우트 보호 | X | AdminGuard만 존재 |
+| 2단계 인증 (2FA) | X | Out of Scope |
+| 로그인 실패 횟수 제한 | X | Out of Scope |

@@ -1,95 +1,83 @@
 # 초기 데이터 마이그레이션 Spec
 
-## 개요
+## 설계 결정
 
-CSV 원본 데이터를 정규화하여 Flyway SQL로 변환하는 마이그레이션 기술 명세입니다.
+### 왜 Python + Pandas인가?
 
----
+복잡한 CSV 정제와 SQL 생성 자동화.
 
-## 데이터 흐름
+| 선택지 | 장점 | 단점 |
+|--------|------|------|
+| Bash/SQL | 단순 | CSV 파싱 복잡, 데이터 검증 어려움 |
+| Python + Pandas | DataFrame API, 자동 정제 | 추가 의존성 |
+
+- 공백 제거, 금액 변환, 날짜 형식 변환 등 정제 로직
+- 기관명/강사명 중복 제거 및 정렬
+- bcrypt 비밀번호 해싱
+
+### 왜 마스터 데이터를 먼저 처리하는가?
+
+FK 의존성 순서 준수.
 
 ```
-Raw CSV Files → Python Script → Flyway SQL Files → PostgreSQL
+Step 0: Admin User
+Step 1: Categories (대분류→중분류→소분류)
+Step 2: Organizations (기관)
+Step 3: Teachers (강사)
+Step 4: Curriculums (커리큘럼)
+Step 5: Lectures + 관계 테이블
 ```
 
-**기술 스택**: Python 3.x, Pandas, Flyway (Spring Boot 내장)
+- 강의(Step 5)는 기관/강사/커리큘럼 ID 참조
+- 상위 데이터가 없으면 FK 제약 위반
+- 정렬된 순서로 생성하여 같은 CSV → 같은 ID 보장
 
----
+### 왜 ON CONFLICT DO NOTHING인가?
 
-## 처리 로직
-
-### Step 0: Admin User 생성
+멱등성(Idempotency) 보장.
 
 ```sql
-INSERT INTO swcampus.members (user_id, email, name, role, ...)
-VALUES (1, 'admin@swcampus.com', 'Admin', 'ADMIN', ...)
-ON CONFLICT DO NOTHING;
+INSERT INTO ... VALUES (...) ON CONFLICT DO NOTHING;
 ```
 
-### Step 1: 전처리
+- 스크립트 재실행 시 중복 오류 없음
+- 부분 실행 후 재개 가능
+- Flyway 마이그레이션 안전성
 
-| 처리 | 설명 |
-|------|------|
-| Encoding | utf-8 또는 cp949 자동 감지 |
-| 공백 제거 | 모든 문자열 strip() |
-| 금액 변환 | `,` 제거 → int |
-| 날짜 변환 | YYYYMMDD → YYYY-MM-DD |
+### 왜 Sequence를 리셋하는가?
 
-### Step 2: 마스터 데이터 추출
+다음 INSERT 시 ID 충돌 방지.
 
-| 테이블 | 소스 | 설명 |
-|--------|------|------|
-| categories | 통합데이터.csv `대분류` | 고유 카테고리 추출 |
-| organizations | 과정정보.csv `교육기관명` | 고유 기관 추출 |
-| teachers | 과정정보.csv `강사명` | 고유 강사 추출 ('미상' 등 제외) |
-| curriculums | 카테고리별 CSV 헤더 | 커리큘럼 항목 추출 |
-
-### Step 3: 강좌 데이터 (lectures)
-
-| DB 컬럼 | CSV 소스 | 변환 |
-|---------|----------|------|
-| lecture_name | 과정명 | - |
-| org_id | 교육기관명 | organizations Lookup |
-| start_date/end_date | 교육시작일자/종료일자 | Date 변환 |
-| lecture_fee | 수강료 합계 | 숫자 변환 |
-| lecture_loc | 온라인/오프라인 | ONLINE/OFFLINE/MIXED |
-| equip_pc | 장비 | PC/PERSONAL/NONE |
-
-### Step 4: 관계 데이터
-
-| 테이블 | 설명 |
-|--------|------|
-| lecture_curriculums | lecture_id, curriculum_id, level (BASIC/ADVANCED/NONE) |
-| lecture_steps | 전형 단계 (DOCUMENT, INTERVIEW, CODING_TEST, PRE_TASK) |
-| lecture_quals | 지원 자격 (REQUIRED/PREFERRED) |
-| lecture_teachers | 강사 매핑 |
-| lecture_adds | 추가 혜택 |
-
----
-
-## 파일 구조
-
-```
-sw-campus-server/scripts/data-migration/
-├── convert.py              # 메인 변환 스크립트
-├── requirements.txt        # pandas 등
-├── data/                   # 원본 CSV
-└── output/                 # 생성된 SQL
+```sql
+SELECT setval('table_id_seq', (SELECT COALESCE(MAX(id), 1) FROM table));
 ```
 
----
+- 시드 데이터가 명시적 ID로 삽입됨
+- 리셋 없으면 다음 `nextval()`이 1부터 시작
+- MAX(id) + 1부터 시작하도록 동기화
 
-## SQL 생성 규칙
+### 왜 인코딩 폴백 처리를 하는가?
 
-- Idempotency: `INSERT ... ON CONFLICT DO NOTHING`
-- Sequence Reset: `SELECT setval(...)` 추가
+다양한 CSV 소스 호환.
+
+```python
+try:
+    df = pd.read_csv(path, encoding='utf-8-sig')
+except UnicodeDecodeError:
+    df = pd.read_csv(path, encoding='cp949')  # Windows 한글
+```
+
+- 원본 CSV가 여러 소스에서 수집됨
+- UTF-8 BOM, Windows cp949 등 혼재
+- 자동 감지로 수동 변환 불필요
 
 ---
 
 ## 구현 노트
 
-### 2025-12-XX - 초기 구현
+### 2025-12-16 - 초기 구현 [Server]
 
 - Python 스크립트로 CSV → SQL 변환
-- Flyway 마이그레이션으로 적용
-- 271개 기관, 약 300개 강좌 데이터 적재
+- 12개 Flyway 마이그레이션 파일 생성 (V2~V13)
+- 데이터: 153개 기관, 389개 강좌, 25개 카테고리, 50개 커리큘럼
+- 관련: `scripts/data-migration/src/convert.py`
