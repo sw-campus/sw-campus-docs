@@ -53,8 +53,11 @@ sw-campus-client/
 │   │   ├── env.ts              # 환경변수
 │   │   └── utils.ts            # 공통 유틸 함수
 │   │
-│   └── store/                  # Zustand 스토어
-│       └── {domain}.store.ts
+│   ├── store/                  # Zustand 스토어
+│   │   └── {domain}.store.ts
+│   │
+│   └── types/                  # 공용 타입 정의
+│       └── {domain}.type.ts
 └── ...
 ```
 
@@ -263,6 +266,7 @@ src/store/
 | 도메인 컴포넌트 | `features/{domain}/components/` |
 | 도메인 훅 | `features/{domain}/hooks/` |
 | 도메인 타입 | `features/{domain}/types/` |
+| 공용 타입 | `types/` |
 | 공용 훅 | `hooks/` |
 | Axios 설정 | `lib/axios.ts` |
 | 환경변수 | `lib/env.ts` |

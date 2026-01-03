@@ -11,8 +11,12 @@ sw-campus-server/
 ├── sw-campus-api/           # Presentation Layer
 ├── sw-campus-domain/        # Business Logic Layer
 ├── sw-campus-infra/         # Infrastructure Layer
+│   ├── analytics/           # 통계/분석
 │   ├── db-postgres/         # PostgreSQL (JPA)
-│   └── file-s3/             # AWS S3
+│   ├── db-redis/            # Redis
+│   ├── oauth/               # OAuth 클라이언트
+│   ├── ocr/                 # OCR 클라이언트
+│   └── s3/                  # AWS S3
 └── sw-campus-shared/        # Cross-cutting Concerns
     └── logging/             # 로깅
 ```
