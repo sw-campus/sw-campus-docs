@@ -120,6 +120,70 @@ CATEGORY_IMAGE_MAP = {
 
 ---
 
+### 관리자 강의 승인 워크플로우
+
+#### 왜 관리자는 모든 강의를 수정할 수 있는가?
+
+운영 효율성 우선.
+
+```java
+// LectureService.updateLecture()
+if (actor.getRole() != Role.ADMIN && !org.getId().equals(lecture.getOrgId())) {
+    throw new AccessDeniedException("본인 기관의 강의만 수정할 수 있습니다.");
+}
+```
+
+- ADMIN 역할은 소유권 검사 우회
+- 기관이 실수로 잘못된 정보 입력 시 관리자가 직접 수정
+- 기관에 수정 요청 → 수정 → 재승인 과정 생략
+
+#### 왜 강의 승인/반려 시 이메일 알림이 없는가?
+
+기관 승인과 성격이 다름.
+
+| 알림 대상 | 기관 승인 | 강의 승인 |
+|----------|----------|----------|
+| 빈도 | 1회 (가입 시) | 여러 번 (강의마다) |
+| 긴급성 | 높음 (서비스 이용 불가) | 낮음 (마이페이지에서 확인) |
+| 결과 | 이메일 발송 | 이메일 미발송 |
+
+- 기관은 마이페이지 강의 목록에서 승인 상태 즉시 확인 가능
+- 대량 강의 등록 시 이메일 폭주 방지
+- 반려 사유는 강의 상세에서 확인
+
+#### 왜 관리자 강의 검색에 상태 필터가 있는가?
+
+대기열 우선순위 관리.
+
+```java
+// AdminLectureController.searchLectures()
+@RequestParam(required = false) LectureAuthStatus lectureAuthStatus
+```
+
+| 필터 | 용도 |
+|------|------|
+| PENDING | 승인 대기 (우선 처리) |
+| APPROVED | 승인 완료 목록 |
+| REJECTED | 반려 목록 (재심사 대상 확인) |
+
+- 기본: PENDING 필터로 대기열만 표시
+- 필요시 전체 조회 (통계, 검색)
+
+#### 왜 승인/대기중 상태 강의도 수정 가능한가?
+
+기관의 정보 수정 자유 보장.
+
+```
+Before: APPROVED/PENDING 상태 → 수정 시 예외 발생
+After:  모든 상태 → 수정 허용, REJECTED만 자동 PENDING 복원
+```
+
+- APPROVED 강의도 정보 업데이트 필요 (일정, 장소 변경)
+- 수정 즉시 반영, 재승인 불필요
+- REJECTED만 재심사 워크플로우 적용
+
+---
+
 ## 구현 노트
 
 ### 2025-12-04 - 초기 구현 [Server][Client]
