@@ -80,6 +80,18 @@ UX 고려. 승인 대기 중에도 서비스 탐색 가능.
 
 ## 구현 노트
 
+### 2026-01-12 - 카카오 OAuth 추가 [Server][Client]
+
+- PR: Server #379, Client #182
+- 배경: 국내 사용자 편의성 향상
+- 변경:
+  - `KakaoOAuthClient` 추가 (Token URL: kauth.kakao.com, User Info URL: kapi.kakao.com)
+  - `OAuthProvider` enum에 KAKAO 추가
+  - 프론트엔드 카카오 로그인 버튼 추가 (노란색 #FEE500)
+  - `useOAuthUrls` 훅에 카카오 OAuth URL 생성 로직 추가
+- 관련: `KakaoOAuthClient.java`, `SocialLoginButton.tsx`, `useOAuthUrls.ts`
+- 주의: 카카오는 이메일 동의가 선택이므로 email이 null일 수 있음
+
 ### 2025-12-21 - 닉네임 중복 검사 구현 [Server]
 
 - PR: #186
