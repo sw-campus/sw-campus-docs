@@ -52,6 +52,25 @@ GET /api/v1/mypage/reviews 응답에 수료증 정보 포함
 - 기존 API 확장으로 일관성 유지
 - 수료증 정보는 후기와 1:1 관계이므로 함께 조회 자연스러움
 
+### 왜 InputStream 기반으로 변경하는가? (2026-01-13 리팩토링)
+
+메모리 효율성 개선.
+
+**변경 전** (`image.getBytes()`):
+- 파일 전체를 메모리에 로드
+- 대용량 파일 업로드 시 OutOfMemoryError 위험
+
+**변경 후** (`image.getInputStream()`):
+- 스트림 기반으로 처리
+- 메모리 사용량 최소화
+
+| 방식 | 메모리 사용 | 대용량 파일 |
+|------|-----------|------------|
+| getBytes() | 파일 크기만큼 | OOM 위험 |
+| getInputStream() | 버퍼 크기만큼 | 안전 |
+
+**영향 범위**: FileStorageService, S3FileStorageService, CertificateService, CertificateController
+
 ---
 
 ## 구현 노트
@@ -74,3 +93,14 @@ GET /api/v1/mypage/reviews 응답에 수료증 정보 포함
 - 배경: status 컬럼이 항상 'SUCCESS'로 설정되어 사용되지 않음, 실제 상태는 approval_status로 관리
 - 변경: Certificate 도메인 및 Entity에서 status 필드 제거, Flyway 마이그레이션 추가
 - 관련: `Certificate.java`, `CertificateEntity.java`, `V6__drop_certificates_status_column.sql`
+
+### 2026-01-13 - 파일 업로드 시 InputStream 기반 처리로 개선 [Server]
+
+- PR: #387
+- 관련 이슈: #384
+- 배경: `image.getBytes()`로 파일 전체를 메모리에 로드하여 대용량 파일 업로드 시 OOM 위험
+- 변경:
+  - FileStorageService에 InputStream 오버로드 메서드 추가
+  - CertificateController/Service에서 `getInputStream()` 사용으로 변경
+  - 대용량 파일 업로드 시 메모리 효율성 개선
+- 관련: `FileStorageService.java`, `S3FileStorageService.java`, `CertificateService.java`, `CertificateController.java`
