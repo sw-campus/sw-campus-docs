@@ -76,6 +76,86 @@ export async function getResource(id: string, userId: string) {
 
 ---
 
+### 1.3 React Query 캐시 공유로 중복 호출 제거
+
+여러 컴포넌트에서 **동일한 데이터**가 필요하면 같은 queryKey를 사용합니다.
+
+```typescript
+// ❌ 잘못된 예: 각 컴포넌트에서 독립적으로 데이터 페칭
+// ActivitySummary.tsx
+const { data } = useQuery({
+  queryKey: ['completedLectures-summary'],  // 다른 키
+  queryFn: () => fetchCompletedLectures(),
+})
+
+// ReviewSection.tsx
+const { data } = useQuery({
+  queryKey: ['completedLectures-reviews'],  // 다른 키 → 중복 API 호출!
+  queryFn: () => fetchCompletedLectures(),
+})
+
+// ✅ 올바른 예: 동일한 queryKey로 캐시 공유
+// hooks/useCompletedLecturesQuery.ts
+export function useCompletedLecturesQuery() {
+  return useQuery({
+    queryKey: ['completedLectures'],  // 동일한 키
+    queryFn: () => fetchCompletedLectures(),
+  })
+}
+
+// ActivitySummary.tsx
+const { data } = useCompletedLecturesQuery()  // 캐시 히트
+
+// ReviewSection.tsx
+const { data } = useCompletedLecturesQuery()  // 캐시 히트 (중복 호출 없음)
+```
+
+**규칙:**
+- ✅ 같은 데이터는 같은 queryKey 사용
+- ✅ 공용 Query Hook으로 추상화
+- ❌ 컴포넌트마다 다른 queryKey 사용 금지
+
+---
+
+### 1.4 종속 쿼리 병렬화 (enabled 옵션)
+
+`enabled` 옵션으로 순차 실행되는 쿼리 중 **독립적인 쿼리는 병렬화**합니다.
+
+```typescript
+// ❌ 잘못된 예: 독립 쿼리가 순차 실행
+const { data } = useLectureDetailQuery(lectureId)
+
+// orgInfo와 aiSummary는 서로 독립적이지만 순차 실행됨
+const { data: orgInfo } = useQuery({
+  queryKey: ['org', data?.orgId],
+  enabled: !!data?.orgId,  // data 완료 후 시작
+})
+
+const { data: aiSummary } = useQuery({
+  queryKey: ['aiSummary', lectureId],
+  enabled: !!data,  // data 완료 후 시작 (orgInfo 완료 기다림)
+})
+
+// ✅ 올바른 예: 독립 쿼리 병렬 실행
+const { data } = useLectureDetailQuery(lectureId)
+
+// 둘 다 data만 의존 → 동시 시작됨
+const { data: orgInfo } = useQuery({
+  queryKey: ['org', data?.orgId],
+  enabled: !!data?.orgId,
+})
+
+const { data: aiSummary } = useQuery({
+  queryKey: ['aiSummary', lectureId],
+  enabled: !!data,  // data 완료 시 orgInfo와 동시 시작
+})
+```
+
+**React Query는 의존성 그래프를 분석하여 자동 병렬화**합니다.
+단, 쿼리 간 의존성이 없는지 확인 필요.
+
+---
+
 ## 2. 번들 최적화 (CRITICAL)
 
 ### 2.1 Barrel Import 금지
@@ -469,6 +549,8 @@ const [settings, setSettings] = useState(() => {
 □ Waterfall 제거
   □ 독립적인 API 호출에 Promise.all() 사용
   □ 조건 체크 후 데이터 페칭 (await 지연)
+  □ 동일 데이터는 같은 queryKey로 캐시 공유
+  □ 독립적인 종속 쿼리는 병렬 실행 확인
 
 □ 번들 최적화
   □ next.config.js에 optimizePackageImports 설정

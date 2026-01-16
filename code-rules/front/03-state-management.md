@@ -188,6 +188,38 @@ export function useAddToCart() {
 - ❌ queryFn 내부에서 toast 호출 (인터셉터에서 처리)
 - ❌ staleTime: 0 설정 (캐싱 전략 붕괴)
 
+### 2.6 로딩 상태 완전성 체크
+
+병렬 쿼리 사용 시 **모든 쿼리의 로딩 상태**를 확인합니다.
+
+```typescript
+// ❌ 잘못된 예: 일부 쿼리의 로딩 상태 누락
+const { data: org, isLoading: isOrgLoading } = useOrgQuery(orgId)
+const { data: courses = [] } = useCoursesQuery(orgId)  // isLoading 없음!
+
+if (isOrgLoading) return <Loading />  // courses 로딩 중에도 빈 배열 표시
+
+// ✅ 올바른 예: 모든 쿼리의 로딩 상태 통합
+const { data: org, isLoading: isOrgLoading } = useOrgQuery(orgId)
+const { data: courses = [], isLoading: isCoursesLoading } = useCoursesQuery(orgId)
+
+const isLoading = isOrgLoading || isCoursesLoading
+
+if (isLoading) return <Loading />  // 둘 다 완료될 때까지 로딩
+```
+
+**로딩 상태 종류:**
+| 상태 | 의미 |
+|------|------|
+| `isLoading` | 최초 로딩 (캐시 없음) |
+| `isFetching` | 백그라운드 리패치 포함 |
+| `isPending` | v5: isLoading과 동일 |
+
+**규칙:**
+- ✅ 병렬 쿼리 시 모든 isLoading 상태 통합
+- ✅ 기본값(`= []`)과 로딩 상태를 함께 사용
+- ❌ isLoading 없이 기본값만 사용 금지
+
 ---
 
 ## 3. Zustand 규칙
@@ -269,4 +301,6 @@ const useStore = create((set) => ({
   - UI 상태 → Zustand
 □ localStorage에 저장해야 하는가? → Zustand + persist
 □ Query/Zustand를 혼합해서 쓰고 있지 않은가?
+□ 병렬 쿼리 시 모든 isLoading 상태를 통합했는가?
+□ 기본값(= [])과 isLoading을 함께 사용하고 있는가?
 ```
