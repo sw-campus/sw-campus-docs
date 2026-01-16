@@ -173,6 +173,136 @@ Part 1 + Part 2 점수를 합산해 등급(재능형, 노력형, 탐색형, 재�
 
 ---
 
+## ERD (Entity Relationship Diagram)
+
+```mermaid
+erDiagram
+    members ||--o| member_surveys : "1:0..1"
+    survey_question_sets ||--o{ survey_questions : "1:N"
+    survey_questions ||--o{ survey_options : "1:N"
+    survey_questions ||--o{ survey_questions : "parent (self-ref)"
+
+    member_surveys {
+        bigint user_id PK,FK "회원 ID"
+        jsonb basic_survey "기초 설문 응답"
+        jsonb aptitude_test "성향 테스트 응답"
+        jsonb results "테스트 결과"
+        varchar aptitude_grade "적성 등급 (인덱스용)"
+        varchar recommended_job "추천 직무 (인덱스용)"
+        int aptitude_score "적성 점수 (인덱스용)"
+        int question_set_version "응답한 문항 세트 버전"
+        timestamp completed_at "성향 테스트 완료 시간"
+    }
+
+    survey_question_sets {
+        bigint question_set_id PK "문항 세트 ID"
+        varchar name "세트 이름"
+        varchar description "설명"
+        varchar type "타입 (BASIC/APTITUDE)"
+        int version "버전 번호"
+        varchar status "상태 (DRAFT/PUBLISHED/ARCHIVED)"
+        timestamp published_at "발행 시간"
+    }
+
+    survey_questions {
+        bigint question_id PK "문항 ID"
+        bigint question_set_id FK "문항 세트 ID"
+        int question_order "문항 순서"
+        varchar question_text "문항 텍스트"
+        varchar question_type "타입 (RADIO/CHECKBOX/TEXT)"
+        boolean is_required "필수 여부"
+        varchar field_key "응답 저장 키"
+        bigint parent_question_id FK "부모 문항 (조건부)"
+        jsonb show_condition "표시 조건"
+        jsonb metadata "추가 메타데이터"
+        varchar part "파트 (PART1/PART2/PART3)"
+    }
+
+    survey_options {
+        bigint option_id PK "선택지 ID"
+        bigint question_id FK "문항 ID"
+        int option_order "선택지 순서"
+        varchar option_text "선택지 텍스트"
+        varchar option_value "선택지 값"
+        int score "점수 (Part1/2)"
+        varchar job_type "직무 코드 (Part3: F/B/D)"
+        boolean is_correct "정답 여부 (Part1)"
+    }
+```
+
+### 테이블 설명
+
+| 테이블 | 설명 |
+|--------|------|
+| `member_surveys` | 회원별 설문 응답. JSONB로 유연한 응답 저장, 중요 필드는 별도 컬럼으로 추출하여 인덱싱 |
+| `survey_question_sets` | 문항 세트. 타입별(BASIC/APTITUDE) 버전 관리, 동일 타입에 PUBLISHED는 1개만 |
+| `survey_questions` | 개별 문항. 성향 테스트는 PART1(정답형), PART2(점수형), PART3(직무성향) 구분 |
+| `survey_options` | 문항별 선택지. Part별로 점수/정답/직무코드 등 다르게 활용 |
+
+### JSONB 컬럼 구조
+
+**basic_survey** (기초 설문):
+```json
+{
+  "majorInfo": { "hasMajor": true, "majorName": "컴퓨터공학" },
+  "programmingExperience": { "hasExperience": true, "bootcampName": "삼성 SW" },
+  "preferredLearningMethod": "OFFLINE",
+  "desiredJobs": ["BACKEND", "DATA"],
+  "affordableBudgetRange": "RANGE_100_200"
+}
+```
+
+**aptitude_test** (성향 테스트 응답):
+```json
+{
+  "part1Answers": { "q1": 2, "q2": 1, "q3": 2, "q4": 3 },
+  "part2Answers": { "q5": 3, "q6": 2, "q7": 2, "q8": 3 },
+  "part3Answers": { "q9": "B", "q10": "B", "q11": "D", ... }
+}
+```
+
+**results** (테스트 결과):
+```json
+{
+  "aptitudeScore": 65,
+  "aptitudeGrade": "TALENTED",
+  "jobTypeScores": { "B": 5, "F": 1, "D": 1 },
+  "recommendedJob": "BACKEND"
+}
+```
+
+---
+
 ## 구현 노트
 
-> 이 섹션은 구현 완료 후 /done 스킬로 업데이트됩니다.
+### 2026-01-17 - JSONB 기반 설문조사 리팩토링 [Server][Client]
+
+- 배경: 고정 컬럼 구조에서 유연한 문항 관리가 필요
+- 변경:
+  - JSONB 컬럼으로 설문 데이터 저장 구조 변경 (`basic_survey`, `aptitude_test`, `results`)
+  - 문항 세트 버전 관리 (DRAFT → PUBLISHED → ARCHIVED)
+  - 동일 type에서 PUBLISHED는 항상 1개만 존재
+- 관련: `MemberSurveyEntity.java`, `V8__refactor_member_surveys.sql`
+- PR: Server #425
+
+### 2026-01-17 - 성향 테스트 동적 검증 [Server][Client]
+
+- 배경: 하드코딩된 문항 수(Part1=4, Part2=4, Part3=7) 대신 발행된 문항 세트 기반 검증 필요
+- 변경:
+  - Server: `MemberSurveyService.validateAptitudeTestAnswers()` 동적 검증 로직 추가
+  - Server: `InvalidAptitudeTestAnswersException` 예외 클래스 추가
+  - Client: `usePublishedQuestionSetQuery` 훅으로 문항 수 동적 조회
+  - Client: Part3 < 5개 시 발행 경고 메시지 표시
+- 관련: `MemberSurveyService.java`, `QuestionSetDetailModal.tsx`
+- PR: Server #425, Client #217
+
+### 2026-01-17 - 버전 기반 문항 검증 [Server][Client]
+
+- 배경: 테스트 도중 관리자가 문항을 변경하면 응답 수 불일치 발생
+- 변경:
+  - Server: 제출 시 `questionSetVersion` 파라미터로 해당 버전의 문항 세트 검증
+  - Server: `findByTypeAndVersionWithQuestions()` 메서드 추가
+  - Client: 테스트 시작 시 버전을 localStorage에 저장
+  - Client: 저장된 버전과 현재 발행 버전 불일치 시 진행 상황 초기화 + 토스트 알림
+- 관련: `SurveyQuestionSetRepository.java`, `AptitudeTestStep.tsx`
+- PR: Server #425, Client #217
