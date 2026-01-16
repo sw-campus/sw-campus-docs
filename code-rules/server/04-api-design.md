@@ -165,7 +165,7 @@ public class UserController {
 
     // GET /api/v1/users/{id}
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponse> getUser(@PathVariable Long id) {
+    public ResponseEntity<UserResponse> getUser(@PathVariable("id") Long id) {
         User user = userService.getUser(id);
         return ResponseEntity.ok(UserResponse.from(user));
     }
@@ -182,7 +182,7 @@ public class UserController {
     // PUT /api/v1/users/{id}
     @PutMapping("/{id}")
     public ResponseEntity<UserResponse> updateUser(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody UpdateUserRequest request) {
         User user = userService.updateUser(id, request.toCommand());
         return ResponseEntity.ok(UserResponse.from(user));
@@ -190,7 +190,7 @@ public class UserController {
 
     // DELETE /api/v1/users/{id}
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable("id") Long id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
     }
@@ -205,6 +205,29 @@ public class UserController {
 | `ResponseEntity` 사용 | 명시적인 상태 코드 반환          |
 | DTO 변환              | Controller에서 Domain ↔ DTO 변환 |
 | 비즈니스 로직 금지    | Service로 위임                   |
+| **명시적 파라미터 이름** | `@PathVariable`, `@RequestParam`에 name 속성 필수 |
+
+### @PathVariable, @RequestParam 명시적 이름 지정 (필수)
+
+멀티모듈 환경에서 `-parameters` 컴파일러 플래그가 일관되게 적용되지 않을 수 있으므로, **name 속성을 명시적으로 지정**합니다.
+
+```java
+// ✅ 올바른 예: 명시적 name 지정
+@PathVariable("id") Long id
+@PathVariable("userId") Long userId
+@RequestParam("page") int page
+@RequestParam(name = "size", defaultValue = "10") int size
+
+// ❌ 금지: name 생략 (런타임 에러 발생 가능)
+@PathVariable Long id
+@RequestParam int page
+```
+
+**에러 예시** (name 생략 시):
+```
+Name for argument of type [int] not specified, and parameter name information
+not available via reflection. Ensure that the compiler uses the '-parameters' flag.
+```
 
 ---
 
@@ -245,3 +268,4 @@ GET /api/v1/users?email=user@example.com
 - [ ] Request에 `@Valid`가 있는가?
 - [ ] ResponseEntity를 사용하는가?
 - [ ] Controller에 비즈니스 로직이 없는가?
+- [ ] `@PathVariable`, `@RequestParam`에 name 속성이 명시되어 있는가?

@@ -126,7 +126,7 @@ public class UserController {
     })
     public ResponseEntity<UserResponse> getUser(
             @Parameter(description = "사용자 ID", example = "1", required = true)
-            @PathVariable Long id) {
+            @PathVariable("id") Long id) {
         // ...
     }
 
@@ -150,7 +150,7 @@ public class UserController {
         @ApiResponse(responseCode = "403", description = "권한 없음"),
         @ApiResponse(responseCode = "404", description = "사용자 없음")
     })
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable("id") Long id) {
         // ...
     }
 }
@@ -297,7 +297,7 @@ public ResponseEntity<LectureResponse> createLecture(
 @PutMapping(value = "/{lectureId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 @Operation(summary = "강의 수정")
 public ResponseEntity<LectureResponse> updateLecture(
-        @PathVariable Long lectureId,
+        @PathVariable("lectureId") Long lectureId,
 
         @Parameter(description = "강의 정보 (JSON string)",
             schema = @Schema(implementation = LectureUpdateRequest.class))
@@ -433,10 +433,10 @@ public ResponseEntity<Response> signupOrganization(
 
 ```java
 @Parameter(description = "사용자 ID", example = "1", required = true)
-@PathVariable Long id
+@PathVariable("id") Long id
 
 @Parameter(description = "페이지 번호", example = "0")
-@RequestParam(defaultValue = "0") int page
+@RequestParam(name = "page", defaultValue = "0") int page
 ```
 
 ---
