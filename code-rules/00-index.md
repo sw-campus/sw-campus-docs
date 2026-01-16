@@ -234,6 +234,31 @@ const response = await fetch('/api/users');
 <div className="rounded-[8px]">
 ```
 
+### 성능 최적화 규칙
+
+```typescript
+// ✅ Promise.all()로 병렬 실행 (Waterfall 제거)
+const [lecture, reviews] = await Promise.all([
+  fetchLecture(id),
+  fetchReviews(id),
+]);
+
+// ✅ Dynamic import로 무거운 컴포넌트 lazy-load
+const MonacoEditor = dynamic(() => import('./MonacoEditor'), { ssr: false });
+
+// ✅ 함수형 setState (stale closure 방지)
+setItems(prev => [...prev, newItem]);
+
+// ✅ Primitive 의존성 사용
+useEffect(() => { ... }, [userId]);  // user 객체 대신 userId
+```
+
+**핵심 규칙:**
+- 독립적인 API 호출 → `Promise.all()`
+- 무거운 컴포넌트 → `next/dynamic`
+- setState에서 이전 상태 참조 → 함수형 업데이트
+- useEffect 의존성 → primitive 값 사용
+
 ### 상세 문서 참조
 
 | 문서 | 참조 시점 |
@@ -244,6 +269,7 @@ const response = await fetch('/api/users');
 | `front/04-api-communication.md` | API 호출 |
 | `front/05-styling-rules.md` | 스타일링 |
 | `front/06-eslint-rules.md` | 코드 품질 |
+| `front/07-performance-optimization.md` | 성능 최적화 |
 
 ---
 
@@ -266,9 +292,11 @@ const response = await fetch('/api/users');
 |------|----------|
 | 새 페이지 추가 | 01, 02 |
 | 새 feature 추가 | 01, 02, 03 |
-| API 연동 | 03, 04 |
-| 상태 관리 | 03 |
+| API 연동 | 03, 04, 07 |
+| 상태 관리 | 03, 07 |
 | 스타일링 | 05 |
+| 성능 최적화 | 07 |
+| 무거운 컴포넌트 추가 | 02, 07 |
 
 ---
 
@@ -294,6 +322,9 @@ const response = await fetch('/api/users');
 - [ ] UI 상태 → Zustand
 - [ ] api 인스턴스 사용 (axios 직접 import 금지)
 - [ ] 디자인 토큰 사용 (하드코딩 금지)
+- [ ] 독립적인 API 호출은 Promise.all() 사용
+- [ ] 무거운 컴포넌트는 next/dynamic 사용
+- [ ] setState에서 이전 상태 참조 시 함수형 업데이트
 
 ### 4. 코드 작성 후 확인
 - [ ] 깨진 창문이 없는가? (TODO, 주석 코드, 미사용 변수)

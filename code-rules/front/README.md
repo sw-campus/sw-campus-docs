@@ -58,6 +58,7 @@ flowchart TB
 | 04 | [API 통신](./04-api-communication.md) | Axios 인스턴스, 에러 처리 규칙 |
 | 05 | [스타일링 규칙](./05-styling-rules.md) | TailwindCSS 4, 전역 토큰 시스템 |
 | 06 | [ESLint 규칙](./06-eslint-rules.md) | TypeScript, 코드 스타일 규칙 |
+| 07 | [성능 최적화](./07-performance-optimization.md) | Waterfall 제거, 번들/렌더링 최적화 |
 
 ---
 
@@ -104,6 +105,7 @@ sw-campus-client/
 3. **상태 분리** - 서버 상태(Query) / 클라이언트 상태(Zustand)
 4. **TailwindCSS 토큰 사용** - 하드코딩 색상/radius 금지
 5. **Axios 인스턴스 사용** - 직접 axios import 금지
+6. **성능 최적화** - Promise.all(), dynamic import, 함수형 setState
 
 ---
 
@@ -115,3 +117,6 @@ sw-campus-client/
 - [ ] API 호출은 feature hooks에서 하고 있는가?
 - [ ] 서버 상태를 Zustand에 넣지 않았는가?
 - [ ] TailwindCSS 토큰을 사용하고 있는가?
+- [ ] 독립적인 API 호출에 `Promise.all()` 사용했는가?
+- [ ] 무거운 컴포넌트에 `next/dynamic` 적용했는가?
+- [ ] setState에서 이전 상태 참조 시 함수형 업데이트 사용했는가?
