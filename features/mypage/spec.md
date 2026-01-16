@@ -61,78 +61,21 @@ if (!org.getId().equals(lecture.getOrgId())) {
 
 ---
 
-### 설문조사
+### 설문조사 (2025-01-15 분리)
 
-#### 왜 사용자당 1개의 설문조사만 허용하는가?
-
-`member_surveys.user_id`를 PK로 설정 (UNIQUE 제약).
-
-- 강의 추천에 최신 설문조사 1개만 필요
-- 히스토리 관리 불필요 (현재 상태만 중요)
-- 동일 회원이 2번째 작성 시 409 Conflict 반환
-
-#### 왜 설문조사에 Upsert 패턴을 사용했는가?
-
-회원당 설문조사는 최대 1개. 존재 여부와 관계없이 동일한 결과 보장.
-
-```
-PUT /api/v1/mypage/survey
-- 존재하면 → Update
-- 없으면 → Insert
-```
-
-POST + PUT 분리 시 클라이언트가 존재 여부를 먼저 확인해야 함. Upsert로 단순화.
-
-#### 왜 희망 직무/자격증을 CSV 문자열로 저장하는가?
-
-```java
-@Column(length = 255)
-private String wantedJobs;  // "백엔드, 데이터"
-
-@Column(length = 500)
-private String licenses;    // "정보처리기사, SQLD, AWS SAA"
-```
-
-- 현재 검색/필터 요구사항 없음
-- 단순 표시 용도로 충분
-- 정규화 테이블 생성 오버헤드 불필요
-
-#### 왜 금액을 BigDecimal로 저장하는가?
-
-```java
-@Column(name = "affordable_amount", precision = 15, scale = 2)
-private BigDecimal affordableAmount;
-```
-
-- 정확한 금액 계산 필요 (부동소수점 오류 방지)
-- Java ↔ JavaScript 변환 시 정밀도 유지
-
-#### 왜 Boolean wrapper 타입을 사용하는가?
-
-```java
-Boolean bootcampCompleted;   // null, true, false 가능
-Boolean hasGovCard;
-```
-
-- null = 미응답 상태 표현 가능
-- 선택적 질문 지원
+> 설문조사 설계 결정은 [features/survey/spec.md](../survey/spec.md)로 이동되었습니다.
+>
+> **분리 사유**: 성향 테스트 15문항 추가, 어드민 문항 관리 기능, 버전 관리 등
+> 기능 규모가 커져 별도 문서로 관리
 
 ---
 
 ## 구현 노트
 
-### 2025-12-12 - 설문조사 초기 구현 [Server][Client]
+### 2025-12-12 - 설문조사 초기 구현 [Server][Client] (Deprecated)
 
-- Server:
-  - 설문조사 CRUD (POST/GET/PUT)
-  - USER 본인만 작성/수정 가능
-  - ADMIN 전체 조회 (수정 불가)
-  - 회원 탈퇴 시 CASCADE 삭제
-  - 관련: `MemberSurveyService.java`, `MemberSurveyEntity.java`
-- Client:
-  - `SurveyForm.tsx` - 폼 컴포넌트 (embedded/standalone 모드)
-  - Zod + React Hook Form 검증
-  - 저장 완료 시 `window.dispatchEvent(new Event('survey:saved'))` 발생
+> 설문조사 기능이 리팩토링되어 [features/survey/](../survey/)로 이동되었습니다.
+> 구현 노트는 survey/spec.md에서 관리됩니다.
 
 ### 2025-12-14 - 마이페이지 초기 구현 [Server][Client]
 

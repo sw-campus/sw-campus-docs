@@ -52,6 +52,35 @@ GET /api/v1/mypage/reviews 응답에 수료증 정보 포함
 - 기존 API 확장으로 일관성 유지
 - 수료증 정보는 후기와 1:1 관계이므로 함께 조회 자연스러움
 
+### 왜 PDF, JPEG, PNG만 허용하는가? (2026-01-13 리팩토링)
+
+보안 및 호환성 강화.
+
+| 파일 형식 | 허용 | 이유 |
+|----------|:----:|------|
+| PDF | ✅ | 공식 수료증의 일반적인 형식 |
+| JPEG | ✅ | 스캔/사진 이미지의 표준 형식 |
+| PNG | ✅ | 고품질 캡처 이미지 지원 |
+| GIF, WebP | ❌ | 수료증으로 부적합, 악용 가능성 |
+| 기타 | ❌ | 보안 위험, 검증 불가 |
+
+- Frontend에서 accept 속성으로 1차 필터링
+- 향후 Backend에서 Magic Number 기반 2차 검증 추가 가능
+
+### 왜 S3Document 컴포넌트를 신규 생성했는가? (2026-01-13 리팩토링)
+
+PDF와 이미지를 모두 지원하는 통합 뷰어 필요.
+
+**기존 S3Image**:
+- img 태그만 사용
+- PDF 렌더링 불가
+
+**신규 S3Document**:
+- 파일 확장자 기반 자동 판별
+- PDF: iframe으로 렌더링
+- 이미지: img 태그로 렌더링
+- S3Image 기존 기능 유지 (영향 최소화)
+
 ### 왜 InputStream 기반으로 변경하는가? (2026-01-13 리팩토링)
 
 메모리 효율성 개선.
@@ -104,3 +133,15 @@ GET /api/v1/mypage/reviews 응답에 수료증 정보 포함
   - CertificateController/Service에서 `getInputStream()` 사용으로 변경
   - 대용량 파일 업로드 시 메모리 효율성 개선
 - 관련: `FileStorageService.java`, `S3FileStorageService.java`, `CertificateService.java`, `CertificateController.java`
+
+### 2026-01-13 - 수료증 파일 타입 제한 및 PDF 미리보기 지원 [Client]
+
+- 배경:
+  - 파일 타입 검증 없이 모든 파일 업로드 가능
+  - PDF 파일이 관리자 화면에서 미리보기 안 됨
+- 변경:
+  - PDF, JPEG, PNG 파일만 허용하도록 accept 속성 추가
+  - `validateCertificateFile` 함수 추가 (useFileValidation.ts)
+  - S3Document 컴포넌트 신규 생성 (PDF/이미지 통합 뷰어)
+  - 관리자 수료증 검증 모달에서 PDF 미리보기 지원
+- 관련: `useFileValidation.ts`, `S3Document.tsx`, `CertificateVerifyModal.tsx`, `ManagementSection.tsx`, `PersonalMain.tsx`, `CertificateDetailModal.tsx`

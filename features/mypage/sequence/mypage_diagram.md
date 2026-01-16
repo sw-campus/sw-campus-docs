@@ -73,45 +73,12 @@ sequenceDiagram
 
 ---
 
-## 3. 설문조사 관리 (User Survey Management)
+## 3. 설문조사 관리 (2025-01-15 분리)
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant User as 사용자 (USER)
-    participant Frontend as 프론트엔드
-    participant Backend as 백엔드
-    participant DB as Database
-
-    Note over User, DB: 3.1 설문조사 조회
-    User->>Frontend: "설문조사" 탭 클릭
-    Frontend->>Backend: GET /api/v1/mypage/survey
-    Backend->>DB: 설문조사 데이터 조회 (MemberSurvey)
-    DB-->>Backend: 결과 반환 (없으면 null)
-    
-    alt 데이터 없음
-        Backend-->>Frontend: 200 OK (exists: false)
-        Frontend-->>User: 빈 설문 폼 표시
-    else 데이터 있음
-        Backend-->>Frontend: 200 OK (exists: true, data...)
-        Frontend-->>User: 작성된 설문 내용 표시
-    end
-
-    Note over User, DB: 3.2 설문조사 저장 (Upsert)
-    User->>Frontend: 설문 작성/수정 후 "저장" 클릭
-    Frontend->>Backend: PUT /api/v1/mypage/survey
-    Backend->>DB: 설문조사 데이터 조회
-    
-    alt 데이터 존재 (Update)
-        Backend->>DB: 기존 데이터 업데이트
-    else 데이터 없음 (Insert)
-        Backend->>DB: 신규 데이터 생성
-    end
-    
-    DB-->>Backend: 저장 완료
-    Backend-->>Frontend: 200 OK
-    Frontend-->>User: "저장되었습니다"
-```
+> 설문조사 시퀀스 다이어그램은 [features/survey/sequence/diagram.md](../../survey/sequence/diagram.md)로 이동되었습니다.
+>
+> **분리 사유**: 성향 테스트 15문항 추가, 어드민 문항 관리 기능, 버전 관리 등
+> 기능 규모가 커져 별도 문서로 관리
 
 ---
 
