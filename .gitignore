@@ -1,0 +1,4 @@
+# 민감정보
+tailscale-credentials.txt
+*-credentials.txt
+*.credentials
