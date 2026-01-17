@@ -159,6 +159,58 @@ pnpm audit --fix
 
 ---
 
+## 8. XSS 방어
+
+### 8.1 dangerouslySetInnerHTML 사용 금지
+```tsx
+// ❌ XSS 취약점 발생 가능
+<div dangerouslySetInnerHTML={{ __html: userInput }} />
+
+// ✅ React 자동 이스케이프 활용
+<div>{userContent}</div>
+```
+
+### 8.2 예외 상황
+마크다운 렌더링 등 불가피한 경우:
+- DOMPurify 등 sanitizer 라이브러리 필수 사용
+- PR 리뷰 시 보안 검토 필수
+
+```tsx
+// 불가피한 경우 sanitize 필수
+import DOMPurify from 'dompurify'
+
+<div dangerouslySetInnerHTML={{
+  __html: DOMPurify.sanitize(markdownHtml)
+}} />
+```
+
+---
+
+## 9. 디버깅 로그
+
+### 9.1 민감 정보 콘솔 출력 금지
+```typescript
+// ❌ 프로덕션에서 민감 정보 노출
+console.log('token:', accessToken)
+console.log('user:', { email, password })
+
+// ✅ 민감 정보 제외
+console.log('user logged in:', userId)
+```
+
+### 9.2 프로덕션 console.log 제거
+- ESLint `no-console` 규칙 활용
+- 또는 빌드 시 console 제거 (terser 옵션)
+
+```javascript
+// eslint.config.js
+rules: {
+  'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'warn'
+}
+```
+
+---
+
 ## 체크리스트
 
 - [ ] accessToken localStorage 저장 안 함
@@ -168,3 +220,5 @@ pnpm audit --fix
 - [ ] 민감 정보에 NEXT_PUBLIC_ 미사용
 - [ ] withCredentials: true 설정 (쿠키 인증 시)
 - [ ] pnpm audit 정기 실행
+- [ ] dangerouslySetInnerHTML 미사용 (불가피 시 DOMPurify)
+- [ ] 민감 정보 console.log 미포함
