@@ -135,6 +135,7 @@ public ResponseEntity<Response> upload(
 | `server/05-exception-handling.md` | 예외 처리 |
 | `server/06-design-principles.md` | 설계 결정, 코드 리뷰 |
 | `server/07-swagger-documentation.md` | API 문서화, 파일 업로드 |
+| `server/08-security.md` | 인증/인가, 입력 검증, 에러 처리 |
 
 ---
 
@@ -270,6 +271,7 @@ useEffect(() => { ... }, [userId]);  // user 객체 대신 userId
 | `front/05-styling-rules.md` | 스타일링 |
 | `front/06-eslint-rules.md` | 코드 품질 |
 | `front/07-performance-optimization.md` | 성능 최적화 |
+| `front/08-security.md` | 토큰 저장, 보안 헤더, 입력 검증 |
 
 ---
 
