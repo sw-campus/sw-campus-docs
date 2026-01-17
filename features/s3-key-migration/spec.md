@@ -95,6 +95,38 @@ ADMIN: 모든 카테고리
 ORGANIZATION: 자신 기관 정보
 USER: 본인 정보(수료증)만 업로드
 
+### 왜 백엔드에서 contentType 검증이 필요한가? (2025-01-17 리팩토링)
+
+보안 강화.
+
+**변경 전**:
+- 프론트엔드에서만 파일 타입 검증 (`image/jpeg`, `image/png`, `image/webp`, `image/gif`)
+- 백엔드 `S3PresignedUrlService.getPresignedUploadUrl()`에서 contentType 검증 없음
+- Postman/curl로 API 직접 호출 시 `.exe`, `.php`, `.js` 등 임의 파일 업로드 가능
+
+**변경 후**:
+- 백엔드에서 허용된 이미지 타입만 Presigned URL 발급
+- 악의적인 파일 업로드 원천 차단
+
+```java
+// S3PresignedUrlService.java
+private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
+    "image/jpeg", "image/png", "image/webp", "image/gif"
+);
+
+// getPresignedUploadUrl() 내부
+if (!ALLOWED_CONTENT_TYPES.contains(contentType)) {
+    throw new InvalidContentTypeException(contentType);
+}
+```
+
+**영향 범위**:
+- `S3PresignedUrlService.java` - 검증 로직 추가
+- `S3PresignedUrlServiceTest.java` - 검증 실패 테스트 추가
+- `InvalidContentTypeException.java` - 새 예외 클래스 (domain 모듈)
+
+**관련 이슈**: https://github.com/sw-campus/sw-campus-server/issues/426
+
 ---
 
 ## 구현 노트
