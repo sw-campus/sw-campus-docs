@@ -35,12 +35,13 @@ Map<Long, Long> commentCounts = commentService.getCommentCounts(postIds);
 - `PostSummary`로 작성자/카테고리 JOIN 조회
 - 댓글 수는 별도 일괄 쿼리
 
-### 왜 조회수 증가에 별도 처리를 하지 않는가?
+### 왜 조회수 중복 방지에 Redis를 사용하는가?
 
-MVP 단계에서 단순 구현 우선.
+동일 사용자의 연속 조회로 인한 조회수 부풀리기 방지.
 
-- 상세 조회 시 `VIEW_COUNT += 1`
-- 동일 사용자 중복 조회수 허용 (추후 개선)
+- Redis에 조회 기록 저장 (TTL 1시간)
+- Key: `post:view:{postId}:{userId}`
+- Redis 장애 시 fail-open (조회수 증가 허용)
 
 ### 왜 이전/다음 게시글 API를 별도로 제공하는가?
 
@@ -52,6 +53,14 @@ MVP 단계에서 단순 구현 우선.
 ---
 
 ## 구현 노트
+
+### 2026-01 - 조회수 중복 방지 [Server]
+
+- Redis 기반 조회 기록 저장 (TTL 1시간)
+- `PostViewRepository` 인터페이스 (domain)
+- `PostViewRedisRepository` 구현체 (db-redis)
+- userId 기반 중복 조회 방지
+- 게시글 상세 조회는 인증 필요 (목록은 비로그인 허용)
 
 ### 2025-01 - 게시글 고정 기능 [Server]
 
@@ -91,4 +100,3 @@ MVP 단계에서 단순 구현 우선.
 | 기능 | 상태 | 비고 |
 |------|:----:|------|
 | 실시간 알림 | X | Out of Scope |
-| 조회수 중복 방지 | X | 추후 개선 |
