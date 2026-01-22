@@ -191,6 +191,7 @@ PRD → Sequence → Spec → [구현] → Spec 업데이트
 | [organization-reviews](./organization-reviews/) | 기관별 후기 페이지네이션 | ✅ 완료 |
 | [certificate-ocr-matching](./certificate-ocr-matching/) | 수료증 OCR 다단계 강의명 매칭 검증 | ✅ 완료 |
 | [certificate-management](./certificate-management/) | 마이페이지 수료증 이미지 확인 및 수정 | ✅ 완료 |
+| [review-blind](./review-blind/) | 리뷰 블라인드 기능 (회원 참여 유도) | 🚧 진행중 |
 
 ### 상태 범례
 - 📝 예정: 문서 없음
